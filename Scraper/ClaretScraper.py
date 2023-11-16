@@ -1,8 +1,14 @@
 import requests
 from bs4 import BeautifulSoup
+import sys
+import json
+
+courseDict = {}
 
 def processSubject(name, subject, semester):
-    print(f"Processing Subject: {subject} ({name})")
+    courseDict[name] = []
+    if not quiet:
+        print(f"Processing Subject: {subject} ({name})")
     postParams = {
         "term_in": semester,
         "sel_subj": ["dummy",subject],
@@ -43,7 +49,10 @@ def processSubject(name, subject, semester):
         details = option.findNext("abbr").parent.parent.find_all("td")[1::] #ignore type, seems to be always "Class"
         for detail in details:
             courseInfo.append(detail.text[3:] if detail.text.startswith("(P)") else detail.text)
-        print(list(map(lambda x: x.replace("\u00A0", "N/A"), courseInfo)))
+        courseInfo = list(map(lambda x: x.replace("\u00A0", "N/A"), courseInfo))
+        if not quiet:
+            print(courseInfo)
+        courseDict[name].append(courseInfo)
 
 def processSemester(semester):
     page = requests.get(
@@ -67,12 +76,17 @@ def getLatestSemester():
     semesters = soup.find("select", attrs={"name": "p_term"})
     for option in semesters.find_all("option"):
         if not option.text.endswith("Medicine") and option.text != "None":
-            print(f"Latest Semester: {option.text}\nSemester ID: {option.get('value')}")
+            if not quiet:
+                print(f"Latest Semester: {option.text}\nSemester ID: {option.get('value')}")
             return option.get("value")
 
 if __name__ == "__main__":
+    quiet = "--quiet" in sys.argv
     semester = getLatestSemester()
     subjects = processSemester(semester)
     for subject in subjects:
         if subject[1] != "%":
             processSubject(subject[0], subject[1], semester)
+    if "--save" in sys.argv:
+        output = open("courses.json", "w")
+        output.write(json.dumps(courseDict))
