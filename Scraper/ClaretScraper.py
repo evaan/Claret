@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import sys
 import json
 import re
+from tqdm import tqdm
 
 courseDict = {}
 
@@ -76,7 +77,7 @@ def processCourse(option):
     course["instructor"] = details[5].text[3:] if details[5].text.startswith("(P)") else details[5].text
     for name, var in course.items():
         course[name] = regex.sub(lambda x: BUILDING_CODES[x.group()], var)
-    if not quiet:
+    if verbose:
         print(course)
     return course
 
@@ -85,7 +86,7 @@ def recursivelyProcessSubjects(name, subject, semester):
         processSubject(name, subject, semester, i)
 
 def processSubject(name, subject, semester, course=""):
-    if not quiet:
+    if verbose:
         if course == "":
             print(f"Processing Subject: {subject} ({name})")
         else:
@@ -150,18 +151,32 @@ def getLatestSemester():
     semesters = soup.find("select", attrs={"name": "p_term"})
     for option in semesters.find_all("option"):
         if not option.text.endswith("Medicine") and option.text != "None":
-            if not quiet:
+            if verbose:
                 print(f"Latest Semester: {option.text}\nSemester ID: {option.get('value')}")
             return option.get("value"), option.text
 
 if __name__ == "__main__":
-    quiet = "--quiet" in sys.argv
+    print("\033[95m ####   #       ###  #####  ###### #####")
+    print("#    #  #      #   # #    # #        #")
+    print("#       #      ##### #####  ####     #")
+    print("#       #      #   # #    # #        #")
+    print("#    #  #      #   # #    # #        #")
+    print(" ####   ###### #   # #    # ######   #   0.1")
+    print("https://github.com/evaan/Claret\033[0m")
+    print()
+    if not "--nosave" in sys.argv:
+        print("\033[96mSaving to courses.json, to prevent this use --nosave in your arguments.\033[0m")
+
+    verbose = "--verbose" in sys.argv
     semester, semesterId = getLatestSemester()
     subjects = processSemester(semester, semesterId)
-    for subject in subjects:
+    for subject in tqdm(subjects):
         if subject[1] != "%":
             courseDict[subject[1]] = []
             processSubject(subject[0], subject[1], semester)
-    if "--save" in sys.argv:
+    print("\033[92mScrape complete!\033[0m")
+    if not "--nosave" in sys.argv:
+        print("\033[96mWriting to courses.json...\033[0m")
         output = open("courses.json", "w")
         output.write(json.dumps(courseDict))
+        print("\033[92mWrite complete!\033[0m")
