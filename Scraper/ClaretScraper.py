@@ -54,8 +54,8 @@ BUILDING_CODES = {
     "\u00A0": "N/A",
 }
 
-#todo: seats remaining for class (maybe?)
-#TODO if courses have different schedules on different days (they have class dddefault)
+#TODO: seats remaining for class (maybe?)
+#TODO: also possibly move from json to sqlite
 
 def processCourse(option):
     course = {}
@@ -65,18 +65,23 @@ def processCourse(option):
     course["id"] = title[-2]
     course["crn"] = title[-3]
     course["section"] = title[-1]
-    details = option.findNext("abbr").parent.parent.find_all("td")[1::] #ignore type, seems to be always "Class"
-    time = details[0].text.split(" - ")
+    details = option.findNext("abbr").parent.parent.parent.find_all("td", attrs={"class", "dddefault"})
+    for i in range(len(details)):
+        details[i] = regex.sub(lambda x: BUILDING_CODES[x.group()], details[i].text)
+    
     #maybe do something with 12:00am to 12:01am?
-    course["startTime"] = time[0]
-    course["endTime"] = time[1] if len(time) > 1 else ""
-    course["days"] = details[1].text
-    course["location"] = details[2].text
-    course["dateRange"] = details[3].text
-    course["type"] = details[4].text
-    course["instructor"] = details[5].text[3:] if details[5].text.startswith("(P)") else details[5].text
-    for name, var in course.items():
-        course[name] = regex.sub(lambda x: BUILDING_CODES[x.group()], var)
+    course["times"] = []
+    for i in range(len(details)//7):
+        time = details[1+(i*7)].split(" - ")
+        course["times"].append({
+            "startTime": time[0], 
+            "endTime": time[1] if len(time) > 1 else "", 
+            "days": details[2+(i*7)], 
+            "location": details[3+(i*7)]
+        })
+    course["dateRange"] = details[4] #i dont really know if meeting times is even neccesary, may be something to remove eventually
+    course["type"] = details[5]
+    course["instructor"] = details[6][3:] if details[6].startswith("(P)") else details[6]
     if verbose:
         print(course)
     return course
@@ -135,7 +140,8 @@ def processSemester(semester, name):
         params={
             "p_calling_proc": "bwckschd.p_disp_dyn_sched",
             "p_term": semester
-        }
+        },
+        timeout=10
     )
     soup = BeautifulSoup(page.content, "html.parser")
     subjects = soup.find("select", attrs={"name": "sel_subj"})
@@ -161,7 +167,7 @@ if __name__ == "__main__":
     print("#       #      ##### #####  ####     #")
     print("#       #      #   # #    # #        #")
     print("#    #  #      #   # #    # #        #")
-    print(" ####   ###### #   # #    # ######   #   0.1")
+    print(" ####   ###### #   # #    # ######   #  Scraper v0.1")
     print("https://github.com/evaan/Claret\033[0m")
     print()
     if not "--nosave" in sys.argv:
