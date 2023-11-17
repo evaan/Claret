@@ -4,6 +4,7 @@ import sys
 import json
 import re
 from tqdm import tqdm
+from dateutil import parser
 
 courseDict = {}
 
@@ -59,15 +60,7 @@ BUILDING_CODES = {
 
 #this is code of all time
 def parseTime(time):
-    if time == "TBA":
-        return "TBA"
-    time1 = time.split(" ")
-    time2 = time1[0].split(":")
-    hours = int(time2[0])
-    minutes = int(time2[1])
-    if time1[1] == "pm" and hours != 12:
-        hours += 12
-    return ("0" if hours < 10 else "") + str(hours) + ":" + ("0" if minutes < 10 else "") + str(minutes)
+    return parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA"
 
 def processCourse(option):
     course = {}
@@ -87,7 +80,7 @@ def processCourse(option):
         time = details[1+(i*7)].split(" - ")
         course["times"].append({
             "startTime": parseTime(time[0]),
-            "endTime": parseTime(time[1]) if len(time) > 1 else "",
+            "endTime": parseTime(time[1]) if len(time) > 1 else "TBA",
             "days": details[2+(i*7)], 
             "location": details[3+(i*7)]
         })
