@@ -58,9 +58,7 @@ BUILDING_CODES = {
 #TODO: seats remaining for class (maybe?)
 #TODO: also possibly move from json to sqlite
 
-#this is code of all time
-def parseTime(time):
-    return parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA"
+parseTime = lambda time: parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA" 
 
 def processCourse(option):
     course = {}
@@ -172,7 +170,7 @@ if __name__ == "__main__":
     print("#       #      ##### #####  ####     #")
     print("#       #      #   # #    # #        #")
     print("#    #  #      #   # #    # #        #")
-    print(" ####   ###### #   # #    # ######   #  Scraper v0.1")
+    print(" ####   ###### #   # #    # ######   # Scraper v0.1")
     print("https://github.com/evaan/Claret\033[0m")
     print()
     if not "--nosave" in sys.argv:
