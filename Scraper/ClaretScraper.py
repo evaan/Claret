@@ -82,7 +82,7 @@ def processCourse(option):
             "days": details[2+(i*7)], 
             "location": details[3+(i*7)]
         })
-    course["dateRange"] = details[4] #i dont really know if meeting times is even neccesary, may be something to remove eventually
+    course["dateRange"] = details[4] #i dont really know if date range is even neccesary, may be something to remove eventually
     course["type"] = details[5]
     course["instructor"] = details[6][3:] if details[6].startswith("(P)") else details[6]
     if verbose:
