@@ -1,2 +1,6 @@
-courses.json
-.DS_STORE
+# Scraper
+__pycache__
+courses.*
+
+#macOS
+.DS_Store

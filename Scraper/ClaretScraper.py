@@ -5,33 +5,9 @@ import json
 import re
 from tqdm import tqdm
 from dateutil import parser
-from sqlalchemy import ForeignKey, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
-
-courses = []
-courseTimes = []
-
-#sqlite classes
-class Base(DeclarativeBase):
-    pass
-
-class Course(Base):
-    __tablename__ = "courses"
-    crn: Mapped[int] = mapped_column(primary_key=True)
-    id: Mapped[str] = mapped_column()
-    name: Mapped[str] = mapped_column()
-    section: Mapped[str] = mapped_column()
-    dateRange: Mapped[str] = mapped_column()
-    type: Mapped[str] = mapped_column()
-    instructor: Mapped[str] = mapped_column()
-
-class CourseTime(Base):
-    __tablename__ = "courseTimes"
-    crn: Mapped[int] = mapped_column(ForeignKey("courses.crn", ondelete="cascade"), primary_key=True)
-    days: Mapped[str] = mapped_column()
-    startTime: Mapped[str] = mapped_column()
-    endTime: Mapped[str] = mapped_column()
-    location: Mapped[str] = mapped_column()
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
+from dbClasses import Base, Course, CourseTime, Subject
 
 BUILDING_CODES = {
     # Mostly sourced from https://www.mun.ca/regoff/registration-and-final-exams/course-offerings/building-abbreviations/
@@ -81,7 +57,6 @@ BUILDING_CODES = {
 }
 
 #TODO: seats remaining for class (maybe?)
-#TODO: also possibly move from json to sqlite
 
 parseTime = lambda time: parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA" 
 
@@ -92,26 +67,30 @@ def processCourse(option):
     for i in range(len(details)):
         details[i] = regex.sub(lambda x: BUILDING_CODES[x.group()], details[i].text)
     
-    courses.append(Course(
+    session.merge(Course(
         name = " - ".join(title[0:-3]), #some courses have a hyphen in the name, this includes the remainder of the class
         id = title[-2], 
-        crn = int(title[-3]),
+        crn = title[-3],
         section = title[-1],
         dateRange = details[4], #i dont really know if date range is even neccesary, may be something to remove eventually
         type = details[5],
         instructor = details[6][3:] if details[6].startswith("(P)") else details[6] #TODO: list of profs
-        ))
+    ))
 
     #maybe do something with 12:00am to 12:01am?
+    #remove times if there are more than how many there should be
+    if session.query(CourseTime).filter(CourseTime.crn.like(title[-3] + "%")).count() != (len(details)//7):
+        session.query(CourseTime).filter(CourseTime.crn.like(title[-3] + "%")).delete()
     for i in range(len(details)//7):
         time = details[1+(i*7)].split(" - ")
-        courseTimes.append(CourseTime(
-            crn = int(title[-3]),
+        session.merge(CourseTime(
+            crn = title[-3],
             startTime = parseTime(time[0]),
             endTime = parseTime(time[1]) if len(time) > 1 else "TBA",
             days = details[2+(i*7)],
             location = details[3+(i*7)],
         ))
+
 
 def recursivelyProcessSubjects(name, subject, semester):
     for i in range(1, 10):
@@ -189,6 +168,7 @@ def getLatestSemester():
             return option.get("value"), option.text
 
 if __name__ == "__main__":
+    #intro and args
     print("\033[95m ####   #       ###  #####  ###### #####")
     print("#    #  #      #   # #    # #        #")
     print("#       #      ##### #####  ####     #")
@@ -197,23 +177,19 @@ if __name__ == "__main__":
     print(" ####   ###### #   # #    # ######   # Scraper v0.1")
     print("https://github.com/evaan/Claret\033[0m")
     print()
-    if not "--nosave" in sys.argv:
-        print("\033[96mSaving to courses.json, to prevent this use --nosave in your arguments.\033[0m")
-
     verbose = "--verbose" in sys.argv
+    
+    #sql
+    engine = create_engine("sqlite:///courses.db", echo=verbose)
+    Base.metadata.create_all(engine)
+    session = Session(engine)
+
+    #scraping
     semester, semesterId = getLatestSemester()
     subjects = processSemester(semester, semesterId)
     for subject in tqdm(subjects):
         if subject[1] != "%":
+            session.merge(Subject(name=subject[1], friendlyName=subject[0]))
             processSubject(subject[0], subject[1], semester)
     print("\033[92mScrape complete!\033[0m")
-    if not "--nosave" in sys.argv:
-        engine = create_engine("sqlite:///courses.db", echo=True)
-        Base.metadata.create_all(engine)
-
-        #todo probably add if it needs to be updated 
-
-        with Session(engine) as session:
-            session.add_all(courses)
-            session.add_all(courseTimes)
-            session.commit()
+    session.commit()
