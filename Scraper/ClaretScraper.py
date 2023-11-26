@@ -5,8 +5,33 @@ import json
 import re
 from tqdm import tqdm
 from dateutil import parser
+from sqlalchemy import ForeignKey, create_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 
-courseDict = {}
+courses = []
+courseTimes = []
+
+#sqlite classes
+class Base(DeclarativeBase):
+    pass
+
+class Course(Base):
+    __tablename__ = "courses"
+    crn: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column()
+    name: Mapped[str] = mapped_column()
+    section: Mapped[str] = mapped_column()
+    dateRange: Mapped[str] = mapped_column()
+    type: Mapped[str] = mapped_column()
+    instructor: Mapped[str] = mapped_column()
+
+class CourseTime(Base):
+    __tablename__ = "courseTimes"
+    crn: Mapped[int] = mapped_column(ForeignKey("courses.crn", ondelete="cascade"), primary_key=True)
+    days: Mapped[str] = mapped_column()
+    startTime: Mapped[str] = mapped_column()
+    endTime: Mapped[str] = mapped_column()
+    location: Mapped[str] = mapped_column()
 
 BUILDING_CODES = {
     # Mostly sourced from https://www.mun.ca/regoff/registration-and-final-exams/course-offerings/building-abbreviations/
@@ -61,33 +86,32 @@ BUILDING_CODES = {
 parseTime = lambda time: parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA" 
 
 def processCourse(option):
-    course = {}
     regex = re.compile(r'(?<!\w)(' + '|'.join(re.escape(key) for key in BUILDING_CODES.keys()) + r')(?!\w)')
     title = option.text.split(" - ")
-    course["name"] = " - ".join(title[0:-3]) #some courses have a hyphen in the name, this includes the remainder of the class
-    course["id"] = title[-2]
-    course["crn"] = title[-3]
-    course["section"] = title[-1]
     details = option.findNext("abbr").parent.parent.parent.find_all("td", attrs={"class", "dddefault"})
     for i in range(len(details)):
         details[i] = regex.sub(lambda x: BUILDING_CODES[x.group()], details[i].text)
     
+    courses.append(Course(
+        name = " - ".join(title[0:-3]), #some courses have a hyphen in the name, this includes the remainder of the class
+        id = title[-2], 
+        crn = int(title[-3]),
+        section = title[-1],
+        dateRange = details[4], #i dont really know if date range is even neccesary, may be something to remove eventually
+        type = details[5],
+        instructor = details[6][3:] if details[6].startswith("(P)") else details[6] #TODO: list of profs
+        ))
+
     #maybe do something with 12:00am to 12:01am?
-    course["times"] = []
     for i in range(len(details)//7):
         time = details[1+(i*7)].split(" - ")
-        course["times"].append({
-            "startTime": parseTime(time[0]),
-            "endTime": parseTime(time[1]) if len(time) > 1 else "TBA",
-            "days": details[2+(i*7)], 
-            "location": details[3+(i*7)]
-        })
-    course["dateRange"] = details[4] #i dont really know if date range is even neccesary, may be something to remove eventually
-    course["type"] = details[5]
-    course["instructor"] = details[6][3:] if details[6].startswith("(P)") else details[6]
-    if verbose:
-        print(course)
-    return course
+        courseTimes.append(CourseTime(
+            crn = int(title[-3]),
+            startTime = parseTime(time[0]),
+            endTime = parseTime(time[1]) if len(time) > 1 else "TBA",
+            days = details[2+(i*7)],
+            location = details[3+(i*7)],
+        ))
 
 def recursivelyProcessSubjects(name, subject, semester):
     for i in range(1, 10):
@@ -133,11 +157,11 @@ def processSubject(name, subject, semester, course=""):
         return
     for option in courses:
         course = processCourse(option)
-        courseDict[subject].append(course)
 
 def processSemester(semester, name):
-    courseDict["semester"] = name
-    courseDict["semesterId"] = semester
+    #TODO
+    #courseDict["semester"] = name
+    #courseDict["semesterId"] = semester
     page = requests.get(
         "https://selfservice.mun.ca/direct/bwckgens.p_proc_term_date",
         params={
@@ -181,11 +205,15 @@ if __name__ == "__main__":
     subjects = processSemester(semester, semesterId)
     for subject in tqdm(subjects):
         if subject[1] != "%":
-            courseDict[subject[1]] = []
             processSubject(subject[0], subject[1], semester)
     print("\033[92mScrape complete!\033[0m")
     if not "--nosave" in sys.argv:
-        print("\033[96mWriting to courses.json...\033[0m")
-        output = open("courses.json", "w")
-        output.write(json.dumps(courseDict))
-        print("\033[92mWrite complete!\033[0m")
+        engine = create_engine("sqlite:///courses.db", echo=True)
+        Base.metadata.create_all(engine)
+
+        #todo probably add if it needs to be updated 
+
+        with Session(engine) as session:
+            session.add_all(courses)
+            session.add_all(courseTimes)
+            session.commit()

@@ -2,3 +2,4 @@ requests
 BeautifulSoup4
 tqdm
 python-dateutil
+sqlalchemy

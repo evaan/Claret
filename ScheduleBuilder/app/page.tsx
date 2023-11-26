@@ -2,6 +2,8 @@
 
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Grid, Toolbar, Typography } from "@mui/material";
 
+//TODO: maybe a map of the room oin the popout window?
+
 export default function Home() {
   return(
     <Box sx={{height: "100vh"}}>
