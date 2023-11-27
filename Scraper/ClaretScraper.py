@@ -1,13 +1,14 @@
 import requests
 from bs4 import BeautifulSoup
 import sys
-import json
 import re
 from tqdm import tqdm
 from dateutil import parser
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from dbClasses import Base, Course, CourseTime, Subject
+import os
+from dotenv import load_dotenv
 
 BUILDING_CODES = {
     # Mostly sourced from https://www.mun.ca/regoff/registration-and-final-exams/course-offerings/building-abbreviations/
@@ -57,6 +58,8 @@ BUILDING_CODES = {
 }
 
 #TODO: seats remaining for class (maybe?)
+#TODO: rate my prof support
+#TODO: postgresql
 
 parseTime = lambda time: parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA" 
 
@@ -180,7 +183,8 @@ if __name__ == "__main__":
     verbose = "--verbose" in sys.argv
     
     #sql
-    engine = create_engine("sqlite:///courses.db", echo=verbose)
+    load_dotenv()
+    engine = create_engine(os.getenv("DB_URL"), echo=verbose)
     Base.metadata.create_all(engine)
     session = Session(engine)
 
