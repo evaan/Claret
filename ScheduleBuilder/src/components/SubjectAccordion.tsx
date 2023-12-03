@@ -8,11 +8,11 @@ import { SectionButton } from "./SectionButton";
 export default function SubjectAccordion(props: {subject: Subject, index: number}) {
     const [courses] = useAtom(coursesAtom);
     const subjectCourses = courses.filter((course: Course) => course.subject === props.subject.name);
-    const [uniqueCourses, setUniqueCourses] = React.useState<string[]>([]);
+    const [uniqueCourses, setUniqueCourses] = React.useState<[string, string][]>([]);
 
     React.useEffect(() => {
         subjectCourses.forEach((course: Course) => {
-            if(!uniqueCourses.includes(course.id)) uniqueCourses.push(course.id);
+            if(!JSON.stringify(uniqueCourses).includes(course.id)) uniqueCourses.push([course.id, course.name]);
         });
         setUniqueCourses(uniqueCourses.sort(function(x, y) {return x>y ? 1: -1}));
     }, [])
@@ -24,13 +24,13 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
             </Accordion.Header>
             <Accordion.Body>
                 <Accordion>
-                    {uniqueCourses.map((id: string) => (
-                        <Accordion.Item eventKey={id} key={id}>
+                    {uniqueCourses.map((course: [id: string, name: string]) => (
+                        <Accordion.Item eventKey={course[0]} key={course[0]}>
                             <Accordion.Header>
-                                {id}
+                                {course[0]} - {course[1]}
                             </Accordion.Header>
                             <Accordion.Body>
-                                {courses.filter((section: Course) => id === section.id).map((section: Course) => (
+                                {courses.filter((section: Course) => course[0] === section.id).map((section: Course) => (
                                     <SectionButton section={section} key={section.crn} />
                                 ))}
                             </Accordion.Body>
