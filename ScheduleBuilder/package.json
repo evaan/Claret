@@ -1,47 +1,56 @@
 {
   "name": "claret",
+  "version": "0.1.0",
   "private": true,
-  "sideEffects": false,
-  "type": "module",
-  "scripts": {
-    "build": "remix build",
-    "dev": "remix dev --manual",
-    "start": "remix-serve ./build/index.js",
-    "typecheck": "tsc",
-    "generate": "drizzle-kit introspect:pg"
-  },
+  "proxy": "http://127.0.0.1:8080",
   "dependencies": {
     "@fontsource/sen": "^5.0.17",
-    "@radix-ui/react-accordion": "^1.1.2",
-    "@remix-run/css-bundle": "^2.3.1",
-    "@remix-run/node": "^2.3.1",
-    "@remix-run/react": "^2.3.1",
-    "@remix-run/serve": "^2.3.1",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.0.0",
-    "dotenv": "^16.3.1",
-    "drizzle-orm": "^0.29.0",
-    "isbot": "^3.6.8",
-    "lucide-react": "^0.293.0",
-    "postgres": "^3.4.3",
+    "@fortawesome/free-brands-svg-icons": "^6.5.1",
+    "@fortawesome/react-fontawesome": "^0.2.0",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^16.18.66",
+    "@types/react": "^18.2.41",
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "bootstrap": "^5.3.2",
+    "eslint-plugin-react": "^7.33.2",
+    "jotai": "^2.6.0",
     "react": "^18.2.0",
+    "react-bootstrap": "^2.9.1",
     "react-dom": "^18.2.0",
-    "remix-themes": "^1.2.2",
-    "tailwind-merge": "^2.0.0",
-    "tailwindcss-animate": "^1.0.7"
+    "react-scripts": "5.0.1",
+    "typescript": "^4.9.5",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   },
   "devDependencies": {
-    "@remix-run/dev": "^2.3.1",
-    "@remix-run/eslint-config": "^2.3.1",
-    "@types/react": "^18.2.20",
-    "@types/react-dom": "^18.2.7",
-    "autoprefixer": "^10.4.16",
-    "drizzle-kit": "^0.20.6",
-    "eslint": "^8.38.0",
-    "tailwindcss": "^3.3.5",
-    "typescript": "^5.1.6"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "eslint": "^8.55.0"
   }
 }

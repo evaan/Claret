@@ -4,5 +4,8 @@ courses.*
 
 .env
 
+# API
+node_modules/
+
 #macOS
 .DS_Store

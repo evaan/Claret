@@ -62,23 +62,33 @@ BUILDING_CODES = {
 #TODO: postgresql
 
 parseTime = lambda time: parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA" 
+regex = re.compile(r'(?<!\w)(' + '|'.join(re.escape(key) for key in BUILDING_CODES.keys()) + r')(?!\w)')
 
 def processCourse(option):
-    regex = re.compile(r'(?<!\w)(' + '|'.join(re.escape(key) for key in BUILDING_CODES.keys()) + r')(?!\w)')
     title = option.text.split(" - ")
-    details = option.findNext("abbr").parent.parent.parent.find_all("td", attrs={"class", "dddefault"})
+    details = option.parent.findNext("td").find_all("td", attrs={"class", "dddefault"})
     for i in range(len(details)):
         details[i] = regex.sub(lambda x: BUILDING_CODES[x.group()], details[i].text)
-    
-    session.merge(Course(
-        name = " - ".join(title[0:-3]), #some courses have a hyphen in the name, this includes the remainder of the class
-        id = title[-2], 
-        crn = title[-3],
-        section = title[-1],
-        dateRange = details[4], #i dont really know if date range is even neccesary, may be something to remove eventually
-        type = details[5],
-        instructor = details[6][3:] if details[6].startswith("(P)") else details[6] #TODO: list of profs
-    ))
+
+    if len(details) >= 7:
+        session.merge(Course(
+            name = " - ".join(title[0:-3]), #some courses have a hyphen in the name, this includes the remainder of the class
+            id = title[-2], 
+            crn = title[-3],
+            section = title[-1],
+            dateRange = details[4], #i dont really know if date range is even neccesary, may be something to remove eventually
+            type = details[5],
+            instructor = details[6][3:] if details[6].startswith("(P)") else details[6], #TODO: list of profs
+            subject = title[-2].split()[0]
+        ))
+    else:
+        session.merge(Course(
+            name = " - ".join(title[0:-3]), #some courses have a hyphen in the name, this includes the remainder of the class
+            id = title[-2], 
+            crn = title[-3],
+            section = title[-1],
+            subject = title[-2].split()[0]
+        ))
 
     #maybe do something with 12:00am to 12:01am?
     #remove times if there are more than how many there should be
@@ -172,12 +182,12 @@ def getLatestSemester():
 
 if __name__ == "__main__":
     #intro and args
-    print("\033[95m ####   #       ###  #####  ###### #####")
-    print("#    #  #      #   # #    # #        #")
-    print("#       #      ##### #####  ####     #")
-    print("#       #      #   # #    # #        #")
-    print("#    #  #      #   # #    # #        #")
-    print(" ####   ###### #   # #    # ######   # Scraper v0.1")
+    print("\033[95m ####   #      ###  #####  ###### #####")
+    print("#    #  #     #   # #    # #        #")
+    print("#       #     ##### #####  ####     #")
+    print("#       #     #   # #    # #        #")
+    print("#    #  #     #   # #    # #        #")
+    print(" ####   ##### #   # #    # ######   # Scraper v0.1")
     print("https://github.com/evaan/Claret\033[0m")
     print()
     verbose = "--verbose" in sys.argv
