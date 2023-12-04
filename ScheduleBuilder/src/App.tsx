@@ -3,7 +3,7 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import SubjectAccordion from "./components/SubjectAccordion";
-import { coursesAtom, subjectsAtom, timesAtom } from "./api/atoms";
+import { coursesAtom, selectedCoursesAtom, subjectsAtom, timesAtom } from "./api/atoms";
 import { useAtom } from "jotai";
 import { Course, Subject, Time } from "./api/types";
 
@@ -20,6 +20,8 @@ export default function App() {
         });
     }, [])
 
+    const [selectedCourses] = useAtom(selectedCoursesAtom);
+
     return (
         <div>
             <Row style={{marginLeft: "2.5%", marginRight: "2.5%"}}>
@@ -33,6 +35,9 @@ export default function App() {
                 </Col>
                 <Col xs={12} md={8}>
                     <h1 className="text-center">Schedule</h1>
+                    {selectedCourses.map((course: Course) => (
+                        <h1 key={course.crn}>{JSON.stringify(course)}</h1>
+                    ))}
                 </Col>
             </Row>
             <div style={{position: "absolute", top: "4px", right: "4px"}}>
