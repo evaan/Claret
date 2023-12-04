@@ -12,6 +12,7 @@ export interface Course {
     type: string;
     instructor: string;
     subject: string;
+    campus: string;
 }
 
 export interface Time {

@@ -59,7 +59,7 @@ BUILDING_CODES = {
 
 #TODO: seats remaining for class (maybe?)
 #TODO: rate my prof support
-#TODO: postgresql
+#TODO: campus
 
 parseTime = lambda time: parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA" 
 regex = re.compile(r'(?<!\w)(' + '|'.join(re.escape(key) for key in BUILDING_CODES.keys()) + r')(?!\w)')
@@ -69,6 +69,11 @@ def processCourse(option):
     details = option.parent.findNext("td").find_all("td", attrs={"class", "dddefault"})
     for i in range(len(details)):
         details[i] = regex.sub(lambda x: BUILDING_CODES[x.group()], details[i].text)
+        
+    for line in option.parent.findNext("td").text.split("\n"):
+        if "Campus" in line:
+            campus = line[0:-7]
+
 
     if len(details) >= 7:
         session.merge(Course(
@@ -79,7 +84,8 @@ def processCourse(option):
             dateRange = details[4], #i dont really know if date range is even neccesary, may be something to remove eventually
             type = details[5],
             instructor = details[6][3:] if details[6].startswith("(P)") else details[6], #TODO: list of profs
-            subject = title[-2].split()[0]
+            subject = title[-2].split()[0],
+            campus = campus
         ))
     else:
         session.merge(Course(
@@ -87,7 +93,8 @@ def processCourse(option):
             id = title[-2], 
             crn = title[-3],
             section = title[-1],
-            subject = title[-2].split()[0]
+            subject = title[-2].split()[0],
+            campus = campus
         ))
 
     #maybe do something with 12:00am to 12:01am?

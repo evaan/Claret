@@ -1,6 +1,6 @@
 import React from "react";
 import { Accordion } from "react-bootstrap";
-import { coursesAtom } from "../api/atoms";
+import { coursesAtom, selectedTabAtom } from "../api/atoms";
 import { useAtom } from "jotai";
 import { Course, Subject } from "../api/types";
 import { SectionButton } from "./SectionButton";
@@ -8,14 +8,12 @@ import { SectionButton } from "./SectionButton";
 export default function SubjectAccordion(props: {subject: Subject, index: number}) {
     const [courses] = useAtom(coursesAtom);
     const subjectCourses = courses.filter((course: Course) => course.subject === props.subject.name);
-    const [uniqueCourses, setUniqueCourses] = React.useState<[string, string][]>([]);
+    const uniqueCourses: [string, string][] = []
+    const [selectedTab] = useAtom(selectedTabAtom);
 
-    React.useEffect(() => {
-        subjectCourses.forEach((course: Course) => {
-            if(!JSON.stringify(uniqueCourses).includes(course.id)) uniqueCourses.push([course.id, course.name]);
-        });
-        setUniqueCourses(uniqueCourses.sort(function(x, y) {return x>y ? 1: -1}));
-    }, [])
+    subjectCourses.forEach((course: Course) => {
+        if(!JSON.stringify(uniqueCourses).includes(course.id)) uniqueCourses.push([course.id, course.name]);
+    });
 
     return (
         <Accordion.Item eventKey={props.index.toString()}>
@@ -23,8 +21,9 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
                 {props.subject.friendlyName}
             </Accordion.Header>
             <Accordion.Body>
-                <Accordion>
-                    {uniqueCourses.map((course: [id: string, name: string]) => (
+                {selectedTab.includes(props.index.toString()) &&
+                    <Accordion>
+                    {uniqueCourses.sort(function(x, y) {return x>y ? 1: -1}).map((course: [id: string, name: string]) => (
                         <Accordion.Item eventKey={course[0]} key={course[0]}>
                             <Accordion.Header>
                                 {course[0]} - {course[1]}
@@ -37,6 +36,7 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
                         </Accordion.Item>
                     ))}
                 </Accordion>
+                }
             </Accordion.Body>
         </Accordion.Item>
     )

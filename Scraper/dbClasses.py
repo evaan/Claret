@@ -19,6 +19,7 @@ class Course(Base):
     type: Mapped[str] = mapped_column(nullable=True)
     instructor: Mapped[str] = mapped_column(nullable=True)
     subject: Mapped[str] = mapped_column(ForeignKey("subjects.name", ondelete="cascade"))
+    campus: Mapped[str] = mapped_column()
 
 class CourseTime(Base):
     __tablename__ = "times"
