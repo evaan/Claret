@@ -59,7 +59,6 @@ BUILDING_CODES = {
 
 #TODO: seats remaining for class (maybe?)
 #TODO: rate my prof support
-#TODO: campus
 
 parseTime = lambda time: parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA" 
 regex = re.compile(r'(?<!\w)(' + '|'.join(re.escape(key) for key in BUILDING_CODES.keys()) + r')(?!\w)')
@@ -71,7 +70,7 @@ def processCourse(option):
         details[i] = regex.sub(lambda x: BUILDING_CODES[x.group()], details[i].text)
         
     for line in option.parent.findNext("td").text.split("\n"):
-        if "Campus" in line:
+        if re.match(".*Campus$", line):
             campus = line[0:-7]
 
 

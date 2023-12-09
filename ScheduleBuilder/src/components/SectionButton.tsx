@@ -11,13 +11,13 @@ export function SectionButton(props: {section: Course}) {
     const [modalOpen, setModalOpen] = React.useState<boolean>(false);
     const tmp = times.filter((time: Time) => time.crn === props.section.crn).map((time: Time) => `${time.days}: ${time.startTime}-${time.endTime}`).join(", ")
 
-    const shouldShow = (props.section.campus == "St. John's" && filter[0]) || (props.section.campus == "Grenfell" && filter[1]) || (props.section.campus == "Marine Institute" && filter[2]) || (props.section.campus == "Online" && filter[3]) || props.section.campus == "Other"
+    const shouldShow = (props.section.campus == "St. John's" && filter[0]) || (props.section.campus == "Grenfell" && filter[1]) || (props.section.campus == "Marine Institute" && filter[2]) || (props.section.campus == "Online" && filter[3])
+        || (props.section.campus != "St. John's" && props.section.campus != "Grenfell" && props.section.campus != "Marine Institute" && props.section.campus != "Online" && filter[4])
 
     return (
         <div>
-            {shouldShow &&
                 <div>
-                    <Button variant={props.section.type == "Laboratory" ? "outline-primary" : "primary"} style={{width: "100%", marginBottom: "4px"}} onClick={() => setModalOpen(true)}>
+                    <Button variant={props.section.type == "Laboratory" ? "outline-primary" : "primary"} style={{width: "100%", marginBottom: "4px"}} onClick={() => setModalOpen(true)} disabled={!shouldShow}>
                         {props.section.dateRange !== null ? `${props.section.type} - ${tmp} ${props.section.type != "Laboratory" ? "- " + props.section.instructor : ""}` : `No Information, Section: ${props.section.section}`}
                     </Button>
                     <Modal show={modalOpen} onHide={() => setModalOpen(false)} centered>
@@ -25,10 +25,15 @@ export function SectionButton(props: {section: Course}) {
                         <ModalBody>
                             CRN: {props.section.crn}<br/>
                             Section: {props.section.section}<br/>
-                            Type: {props.section.type}<br/>
                             Campus: {props.section.campus}<br/>
-                            Instructor: {props.section.instructor} (TODO: RateMyProf Support)<br/>
-                            Date Range: {props.section.dateRange}<br/>
+                            Type: {props.section.type !== null ? props.section.type : "Unknown"}<br/>
+                            Date Range: {props.section.dateRange !== null ? props.section.dateRange : "Unkown"}<br/>
+                            Instructors: 
+                            <ul>
+                                {props.section.instructor != null && props.section.instructor.split(", ").map((instructor: string) => (
+                                    <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/search/professors/1441?q=${instructor}`} rel="noreferrer" target="_blank">Search on RateMyProfessors</a>}</li>
+                                ))}
+                            </ul>
                             {times.filter((time: Time) => time.crn === props.section.crn).map((time: Time) => (
                                 <p key={time.id}>{JSON.stringify(time)}</p>
                             ))}
@@ -39,7 +44,6 @@ export function SectionButton(props: {section: Course}) {
                         </ModalFooter>
                     </Modal>
                 </div>
-            }
         </div>
     
     )
