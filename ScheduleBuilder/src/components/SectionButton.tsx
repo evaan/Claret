@@ -30,6 +30,7 @@ export function SectionButton(props: {section: Course}) {
                             Date Range: {props.section.dateRange !== null ? props.section.dateRange : "Unkown"}<br/>
                             Instructors: 
                             <ul>
+                                {/** Do keep in mind that the RMP searching doesnt work very well, potentially find a way to make it better? **/}
                                 {props.section.instructor != null && props.section.instructor.split(", ").map((instructor: string) => (
                                     <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/search/professors/1441?q=${instructor}`} rel="noreferrer" target="_blank">Search on RateMyProfessors</a>}</li>
                                 ))}
@@ -40,7 +41,11 @@ export function SectionButton(props: {section: Course}) {
                         </ModalBody>
                         <ModalFooter>
                             <Button variant="secondary" onClick={() => setModalOpen(false)}>Close</Button>
-                            <Button variant="primary" onClick={() => {setModalOpen(false); setSelectedCourses([...selectedCourses, props.section])}}>Add Course</Button>
+                            {selectedCourses.includes(props.section) &&
+                            <Button variant="danger" onClick={() => {setModalOpen(false); setSelectedCourses(selectedCourses.filter((course: Course) => course !== props.section))}}>Remove Course</Button>}
+                            {!selectedCourses.includes(props.section) &&
+                            <Button variant="primary" onClick={() => {setModalOpen(false); setSelectedCourses([...selectedCourses, props.section])}}>Add Course</Button>}
+
                         </ModalFooter>
                     </Modal>
                 </div>

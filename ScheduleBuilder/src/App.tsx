@@ -3,9 +3,10 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import SubjectAccordion from "./components/SubjectAccordion";
-import { coursesAtom, filterAtom, selectedCoursesAtom, selectedTabAtom, subjectsAtom, timesAtom } from "./api/atoms";
+import { coursesAtom, filterAtom, selectedTabAtom, subjectsAtom, timesAtom } from "./api/atoms";
 import { useAtom } from "jotai";
 import { Course, Subject, Time } from "./api/types";
+import Schedule from "./components/Schedule";
 
 export default function App() {
     const [subjects, setSubjects] = useAtom(subjectsAtom);
@@ -21,8 +22,6 @@ export default function App() {
             setTimes(data.times);
         })
     }, [])
-
-    const [selectedCourses] = useAtom(selectedCoursesAtom);
 
     return (
         <div>
@@ -51,9 +50,7 @@ export default function App() {
                 </Col>
                 <Col xs={12} md={8}>
                     <h1 className="text-center">Schedule</h1>
-                    {selectedCourses.map((course: Course) => (
-                        <h1 key={course.crn}>{JSON.stringify(course)}</h1>
-                    ))}
+                    <Schedule />
                 </Col>
             </Row>
             <div style={{position: "absolute", top: "4px", right: "4px"}}>
