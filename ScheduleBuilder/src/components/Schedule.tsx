@@ -32,7 +32,7 @@ export default function Schedule() {
     });
 
     return (
-        <FullCalendar plugins={[timeGridPlugin]} headerToolbar={{left: "", center: "", right: ""}} allDaySlot={false} hiddenDays={[0]} slotMinTime="08:00" nowIndicator={false}
-        expandRows={true} events={courseTimes}/>
+        <FullCalendar plugins={[timeGridPlugin]} headerToolbar={{left: "", center: "", right: ""}} allDaySlot={false} hiddenDays={[0]} slotMinTime="07:00" nowIndicator={false}
+        expandRows={true} events={courseTimes} contentHeight="auto" />
     )
 }

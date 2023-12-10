@@ -44,7 +44,7 @@ export default function App() {
                         <Form.Check inline type="switch" label="Online" defaultChecked={true} onChange={(event) => setFilters([filters[0], filters[1], filters[2], event.target.checked, filters[4]])} />
                         <Form.Check inline type="switch" label="Others" defaultChecked={false} onChange={(event) => setFilters([filters[0], filters[1], filters[2], filters[3], event.target.checked])} />
                     </div>
-                    <Accordion style={{overflowY: "auto"}} className="h-md-75" onSelect={(event) => {
+                    <Accordion style={{overflowY: "auto"}} onSelect={(event) => {
                         //jank solution but it reduces the amount of lag the site has SIGNIFICANTLY
                         setSelectedTab([event, selectedTab[0]]);
                         setTimeout(() => {
