@@ -6,5 +6,5 @@ h1 {
 }
 
 td.fc-day-today {
-    background-color: #00000000 !important;
+    background-color: unset !important;
 }

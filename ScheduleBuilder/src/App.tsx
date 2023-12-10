@@ -27,15 +27,23 @@ export default function App() {
         <div>
             {/**<LoadingScreen />**/}
             <Row style={{marginLeft: "2.5%", marginRight: "2.5%"}}>
-                <Col xs={12} md={4}>
+                <Col xs={12} md={8} className="order-md-2">
+                    <h1 className="text-center">Schedule</h1>
+                    <div style={{display: "flex", justifyContent: "center"}}>
+                        {/* TODO: import/export buttons */}
+                    </div>
+                    <Schedule />
+                </Col>
+                <Col xs={12} md={4} className="order-md-1">
                     <h1 className="text-center">Courses</h1>
-                    <Form style={{display: "flex", justifyContent: "center"}}>
+                    <div className="d-flex flex-wrap justify-content-center">
                         <Form.Check inline type="switch" label="St. John's" defaultChecked={true} onChange={(event) => setFilters([event.target.checked, filters[1], filters[2], filters[3], filters[4]])} />
                         <Form.Check inline type="switch" label="Grenfell" defaultChecked={false} onChange={(event) => setFilters([filters[0], event.target.checked, filters[2], filters[3], filters[4]])} />
                         <Form.Check inline type="switch" label="Marine Institute" defaultChecked={false} onChange={(event) => setFilters([filters[0], filters[1], event.target.checked, filters[3], filters[4]])} />
+                        <div style={{flexBasis: "100%", height: "0"}} />
                         <Form.Check inline type="switch" label="Online" defaultChecked={true} onChange={(event) => setFilters([filters[0], filters[1], filters[2], event.target.checked, filters[4]])} />
                         <Form.Check inline type="switch" label="Others" defaultChecked={false} onChange={(event) => setFilters([filters[0], filters[1], filters[2], filters[3], event.target.checked])} />
-                    </Form>
+                    </div>
                     <Accordion style={{overflowY: "auto"}} className="h-md-75" onSelect={(event) => {
                         //jank solution but it reduces the amount of lag the site has SIGNIFICANTLY
                         setSelectedTab([event, selectedTab[0]]);
@@ -47,10 +55,6 @@ export default function App() {
                             <SubjectAccordion subject={subject} index={index} key={index} /> 
                         ))}
                     </Accordion>
-                </Col>
-                <Col xs={12} md={8}>
-                    <h1 className="text-center">Schedule</h1>
-                    <Schedule />
                 </Col>
             </Row>
             <div style={{position: "absolute", top: "4px", right: "4px"}}>
