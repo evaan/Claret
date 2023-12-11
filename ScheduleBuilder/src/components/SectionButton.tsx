@@ -17,11 +17,10 @@ export function SectionButton(props: {section: Course}) {
         || (props.section.campus != "St. John's" && props.section.campus != "Grenfell" && props.section.campus != "Marine Institute" && props.section.campus != "Online" && filter[4])
 
     async function updateSeatings(crn: string) {
-        fetch("http://localhost:8080/seating/" + crn).then(response => response.json()).then((data: Seating[]) => {setSeatings(seatings.map((seating: Seating) => seating.crn == props.section.crn ? data[0] : seating))})
+        fetch("http://127.0.0.1:8080/seating/" + crn).then(response => response.json()).then((data: Seating[]) => {setSeatings(seatings.map((seating: Seating) => seating.crn == props.section.crn ? data[0] : seating))})
     }
 
     function formatDateString(input: string){
-        console.log(input)
         input = input.replace("M", "Monday, ").replace("T", "Tuesday, ").replace("W", "Wednesday, ").replace("R", "Thursday, ").replace("F", "Friday, ");
         if (input.endsWith(", ")) input = input.slice(0, -2);
         return input;
@@ -55,7 +54,7 @@ export function SectionButton(props: {section: Course}) {
                         <strong>Times:</strong>
                         <ul style={{margin: "0"}}>
                             {times.filter((time: Time) => time.crn === props.section.crn).map((time: Time) => (
-                                <li key={time.id}>{formatDateString(time.days)} - {moment(time.startTime, "HH:mm").format("hh:mm A")}-{moment(time.endTime, "HH:mm").format("hh:mm A")} - {time.location}</li>
+                                <li key={time.id}>{formatDateString(time.days)} - {moment(time.startTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")}-{moment(time.endTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")} - {time.location}</li>
                             ))}
                         </ul>
                             {seatings.filter((seating: Seating) => seating.crn == props.section.crn).map((seating: Seating) => (

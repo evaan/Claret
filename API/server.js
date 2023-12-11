@@ -59,7 +59,7 @@ app.get("/all", async (req, res) => {
 })
 
 app.get("/seating/:crn", async(req, res) => {
-    let child = spawn("python", ["..\\Scraper\\SeatingScrape.py", req.params.crn])
+    let child = spawn("python3", ["../Scraper/SeatingScrape.py", req.params.crn])
     child.on("exit", async function() {
         res.json((await client.query("SELECT * FROM seatings WHERE crn = $1", [req.params.crn])).rows)
     })

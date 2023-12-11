@@ -4,3 +4,4 @@ tqdm
 python-dateutil
 sqlalchemy
 python-dotenv
+psycopg2-binary
