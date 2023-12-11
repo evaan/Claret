@@ -12,7 +12,7 @@ export default function Schedule() {
 
     const courseTimes: {title: string, start: string, end?: string}[] = []
 
-    let NATimes = 8;
+    let NATimes = 7;
 
     selectedCourses.forEach((course: Course) => {
         const courseTimes1 = times.filter((time: Time) => time.crn == course.crn)

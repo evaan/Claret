@@ -29,3 +29,11 @@ class CourseTime(Base):
     endTime: Mapped[str] = mapped_column()
     location: Mapped[str] = mapped_column()
     ignore: Mapped[int] = mapped_column(primary_key=True) #sqlalchemy NEEDS a primary key
+
+class Seating(Base):
+    __tablename__ = "seatings"
+    crn: Mapped[str] = mapped_column(ForeignKey("courses.crn", ondelete="cascade"), primary_key=True)
+    available: Mapped[str] = mapped_column()
+    max: Mapped[str] = mapped_column()
+    waitlist: Mapped[str] = mapped_column(nullable=True)
+    checked: Mapped[str] = mapped_column()

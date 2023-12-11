@@ -2,6 +2,7 @@ import pg from "pg";
 import express from "express";
 import cors from "cors";
 import { config } from "dotenv";
+import { spawn } from "child_process";
 config();
 
 //initialize sql
@@ -53,5 +54,13 @@ app.get("/all", async (req, res) => {
     output["subjects"] = (await client.query("SELECT * FROM subjects")).rows;
     output["courses"] = (await client.query("SELECT * FROM courses")).rows;
     output["times"] = (await client.query("SELECT * FROM times")).rows;
+    output["seatings"] = (await client.query("SELECT * FROM seatings")).rows;
     res.json(output);
+})
+
+app.get("/seating/:crn", async(req, res) => {
+    let child = spawn("python", ["..\\Scraper\\SeatingScrape.py", req.params.crn])
+    child.on("exit", async function() {
+        res.json((await client.query("SELECT * FROM seatings WHERE crn = $1", [req.params.crn])).rows)
+    })
 })

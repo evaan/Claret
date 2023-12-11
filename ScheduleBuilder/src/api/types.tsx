@@ -23,3 +23,11 @@ export interface Time {
     location: string
     id: number;
 }
+
+export interface Seating {
+    crn: string;
+    available: string;
+    max: string;
+    waitlist: string;
+    checked: string;
+}

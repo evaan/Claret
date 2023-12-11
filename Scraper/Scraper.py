@@ -6,7 +6,7 @@ from tqdm import tqdm
 from dateutil import parser
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from dbClasses import Base, Course, CourseTime, Subject
+from dbClasses import Base, Course, CourseTime, Subject, Seating
 import os
 from dotenv import load_dotenv
 
@@ -95,6 +95,9 @@ def processCourse(option):
             subject = title[-2].split()[0],
             campus = campus
         ))
+        
+    if session.query(Seating.crn).filter_by(crn = title[-3]).first() is None:
+        session.add(Seating(crn = title[-3], available = 0, max = 0, waitlist = 0, checked = "Never"))
 
     #maybe do something with 12:00am to 12:01am?
     #remove times if there are more than how many there should be
