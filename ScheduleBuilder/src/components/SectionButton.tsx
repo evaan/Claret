@@ -39,7 +39,10 @@ export function SectionButton(props: {section: Course}) {
                         Make:    it
                         Like:    this
                         */}
+                        {props.section.comment !== null &&
+                        <div><strong>Comment:</strong> {props.section.comment}</div>}
                         <strong>CRN:</strong> {props.section.crn}<br/>
+                        <strong>Credit Hours:</strong> {props.section.credits}<br/>
                         <strong>Section:</strong> {props.section.section}<br/>
                         <strong>Campus:</strong> {props.section.campus}<br/>
                         <strong>Type:</strong> {props.section.type !== null ? props.section.type : "Unknown"}<br/>
@@ -76,6 +79,5 @@ export function SectionButton(props: {section: Course}) {
                 </Modal>
             </div>
         </div>
-    
     )
 }

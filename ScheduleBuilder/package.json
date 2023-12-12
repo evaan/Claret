@@ -23,6 +23,7 @@
     "eslint-plugin-react": "^7.33.2",
     "jotai": "^2.6.0",
     "moment": "^2.29.4",
+    "moment-range": "^4.0.2",
     "react": "^18.2.0",
     "react-bootstrap": "^2.9.1",
     "react-dom": "^18.2.0",

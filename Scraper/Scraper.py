@@ -63,7 +63,10 @@ BUILDING_CODES = {
 parseTime = lambda time: parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA" 
 regex = re.compile(r'(?<!\w)(' + '|'.join(re.escape(key) for key in BUILDING_CODES.keys()) + r')(?!\w)')
 
+timeId = 0
+
 def processCourse(option):
+    global timeId
     title = option.text.split(" - ")
     details = option.parent.findNext("td").find_all("td", attrs={"class", "dddefault"})
     for i in range(len(details)):
@@ -73,6 +76,7 @@ def processCourse(option):
         if re.match(".*Campus$", line):
             campus = line[0:-7]
 
+    description = list(filter(lambda x: (not x == ""), option.parent.findNext("td").parent.text.split("\n\n")))
 
     if len(details) >= 7:
         session.merge(Course(
@@ -84,7 +88,9 @@ def processCourse(option):
             type = details[5],
             instructor = details[6][3:] if details[6].startswith("(P)") else details[6], #TODO: list of profs
             subject = title[-2].split()[0],
-            campus = campus
+            campus = campus,
+            comment = None if description[0].startswith("Associated Term") else description[0],
+            credits = int(float(list(filter(lambda x: ("Credits" in x), description))[0].lstrip().split(" ")[0]))
         ))
     else:
         session.merge(Course(
@@ -93,7 +99,9 @@ def processCourse(option):
             crn = title[-3],
             section = title[-1],
             subject = title[-2].split()[0],
-            campus = campus
+            campus = campus,
+            comment = None if description[0].startswith("Associated Term") else description[0],
+            credits = int(float(list(filter(lambda x: ("Credits" in x), description))[0].lstrip().split(" ")[0]))
         ))
         
     if session.query(Seating.crn).filter_by(crn = title[-3]).first() is None:
@@ -111,7 +119,9 @@ def processCourse(option):
             endTime = parseTime(time[1]) if len(time) > 1 else "TBA",
             days = details[2+(i*7)],
             location = details[3+(i*7)],
+            ignore = timeId
         ))
+        timeId+=1
 
 
 def recursivelyProcessSubjects(name, subject, semester):
