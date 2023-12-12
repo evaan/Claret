@@ -1,23 +1,14 @@
 import requests
 from bs4 import BeautifulSoup
-import sys
 import re
-from tqdm import tqdm
 from dateutil import parser
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from dbClasses import Base, Course, CourseTime, Subject, Seating
-import os
+from os import getenv
 from dotenv import load_dotenv
 
 BUILDING_CODES = {
-    # Mostly sourced from https://www.mun.ca/regoff/registration-and-final-exams/course-offerings/building-abbreviations/
-
-    # St. John's Campus
-    # NOTE: Missing UC
-    # NOTE: According to the link above, the new Faculty of Medicine building (which is
-    # attached to HSC) has the building code "M". But it does not appear in banner or the
-    # campus map. 
     "Arts and Administration Bldg": "A",
     "Henrietta Harvey Bldg": "HH",
     "Business Administration Bldg": "BN",
@@ -37,35 +28,48 @@ BUILDING_CODES = {
     "Alexander Murray Bldg": "ER",
     "Health Sciences Centre": "H",
     "Coughlan College": "CL",
-
-    # Marine Institute
     "Marine Institute": "MI",
-
-    # Center for Nursing Studies
     "Center for Nursing Studies": "N",
-
-    # Grenfell Campus
-    # NOTE: Western Memorial Hosp Library is a seperate building in banner,
-    # but I have no evidence it has room numbers or a building code. So it is excluded
     "Arts and Science (SWGC)": "AS",
     "Fine Arts (SWGC)": "FA",
     "Forest Centre": "FC",
     "Library/Computing (SWGC)": "LC",
     "Western Memorial Hospital": "WMH",
-
-    # Whitespace character
     "\u00A0": "N/A",
 }
 
-#TODO: seats remaining for class (maybe?)
-#TODO: rate my prof support
+def getLatestSemester(medical = False):
+    page = requests.get("https://selfservice.mun.ca/direct/bwckschd.p_disp_dyn_sched")
+    soup = BeautifulSoup(page.content, "html.parser")
+
+    semesters = soup.find("select", attrs={"name": "p_term"})
+    for option in semesters.find_all("option"):
+        if (not option.text.endswith("Medicine") or medical) and option.text != "None":
+            print(f"Latest {'Medical ' if medical else ''}Semester: {option.text}\nSemester ID: {option.get('value')}")
+            return option.get("value")
+        
+def processSemester(semester):
+    page = requests.get(
+        "https://selfservice.mun.ca/direct/bwckgens.p_proc_term_date",
+        params={
+            "p_calling_proc": "bwckschd.p_disp_dyn_sched",
+            "p_term": semester
+        },
+        timeout=10
+    )
+    soup = BeautifulSoup(page.content, "html.parser")
+    subjects = soup.find("select", attrs={"name": "sel_subj"})
+    subjectList = []
+    for option in subjects.find_all("option"):
+        subjectList.append((option.text, option.get("value"), semester))
+    return subjectList
 
 parseTime = lambda time: parser.parse(time).strftime("%H:%M") if time != "TBA" else "TBA" 
 regex = re.compile(r'(?<!\w)(' + '|'.join(re.escape(key) for key in BUILDING_CODES.keys()) + r')(?!\w)')
 
 timeId = 0
 
-def processCourse(option):
+def processCourse(option, medical = False):
     global timeId
     title = option.text.split(" - ")
     details = option.parent.findNext("td").find_all("td", attrs={"class", "dddefault"})
@@ -87,7 +91,7 @@ def processCourse(option):
             dateRange = details[4], #i dont really know if date range is even neccesary, may be something to remove eventually
             type = details[5],
             instructor = details[6][3:] if details[6].startswith("(P)") else details[6], #TODO: list of profs
-            subject = title[-2].split()[0],
+            subject = title[-2].split()[0] + ("1" if medical else ""),
             campus = campus,
             comment = None if description[0].startswith("Associated Term") else description[0],
             credits = int(float(list(filter(lambda x: ("Credits" in x), description))[0].lstrip().split(" ")[0]))
@@ -98,7 +102,7 @@ def processCourse(option):
             id = title[-2], 
             crn = title[-3],
             section = title[-1],
-            subject = title[-2].split()[0],
+            subject = title[-2].split()[0] + ("1" if medical else ""),
             campus = campus,
             comment = None if description[0].startswith("Associated Term") else description[0],
             credits = int(float(list(filter(lambda x: ("Credits" in x), description))[0].lstrip().split(" ")[0]))
@@ -123,17 +127,11 @@ def processCourse(option):
         ))
         timeId+=1
 
-
-def recursivelyProcessSubjects(name, subject, semester):
-    for i in range(1, 10):
-        processSubject(name, subject, semester, i)
-
-def processSubject(name, subject, semester, course=""):
-    if verbose:
-        if course == "":
-            print(f"Processing Subject: {subject} ({name})")
-        else:
-            print(f"Processing Subject: {subject} ({name}) Iteration: {course}")
+def processSubject(name, subject, semester, course="", medical=False):
+    if course == "":
+        print(f"Processing Subject: {subject} ({name})")
+    else:
+        print(f"Processing Subject: {subject} ({name}) Iteration: {course}")
     postParams = {
         "term_in": semester,
         "sel_subj": ["dummy",subject],
@@ -164,65 +162,27 @@ def processSubject(name, subject, semester, course=""):
     soup = BeautifulSoup(page.content, "html.parser")
     courses = soup.find_all("th", attrs={"class": "ddtitle"})
     if len(courses) == 101 and course == "": #this does assume that each level has less than 101 courses as well
-        recursivelyProcessSubjects(name, subject, semester)
+        for i in range(1, 10):
+            processSubject(name, subject, semester, i)
         return
     for option in courses:
-        course = processCourse(option)
-
-def processSemester(semester, name):
-    #TODO
-    #courseDict["semester"] = name
-    #courseDict["semesterId"] = semester
-    page = requests.get(
-        "https://selfservice.mun.ca/direct/bwckgens.p_proc_term_date",
-        params={
-            "p_calling_proc": "bwckschd.p_disp_dyn_sched",
-            "p_term": semester
-        },
-        timeout=10
-    )
-    soup = BeautifulSoup(page.content, "html.parser")
-    subjects = soup.find("select", attrs={"name": "sel_subj"})
-    subjectList = []
-    for option in subjects.find_all("option"):
-        subjectList.append((option.text, option.get("value")))
-    return subjectList
-
-def getLatestSemester():
-    page = requests.get("https://selfservice.mun.ca/direct/bwckschd.p_disp_dyn_sched")
-    soup = BeautifulSoup(page.content, "html.parser")
-
-    semesters = soup.find("select", attrs={"name": "p_term"})
-    for option in semesters.find_all("option"):
-        if not option.text.endswith("Medicine") and option.text != "None":
-            if verbose:
-                print(f"Latest Semester: {option.text}\nSemester ID: {option.get('value')}")
-            return option.get("value"), option.text
+        course = processCourse(option, medical)
 
 if __name__ == "__main__":
-    #intro and args
-    print("\033[95m ####   #      ###  #####  ###### #####")
-    print("#    #  #     #   # #    # #        #")
-    print("#       #     ##### #####  ####     #")
-    print("#       #     #   # #    # #        #")
-    print("#    #  #     #   # #    # #        #")
-    print(" ####   ##### #   # #    # ######   # Scraper v0.1")
-    print("https://github.com/evaan/Claret\033[0m")
-    print()
-    verbose = "--verbose" in sys.argv
-    
     #sql
     load_dotenv()
-    engine = create_engine(os.getenv("DB_URL"), echo=verbose)
+    engine = create_engine(getenv("DB_URL"))
     Base.metadata.create_all(engine)
     session = Session(engine)
 
     #scraping
-    semester, semesterId = getLatestSemester()
-    subjects = processSemester(semester, semesterId)
-    for subject in tqdm(subjects):
+    for subject in processSemester(getLatestSemester()):
         if subject[1] != "%":
             session.merge(Subject(name=subject[1], friendlyName=subject[0]))
-            processSubject(subject[0], subject[1], semester)
-    print("\033[92mScrape complete!\033[0m")
+            processSubject(subject[0], subject[1], subject[2])
+    for subject in processSemester(getLatestSemester(True)):
+        if subject[1] != "%":
+            session.merge(Subject(name=subject[1] + "1", friendlyName=subject[0] + " (Medical)"))
+            processSubject(subject[0], subject[1], subject[2], medical=True)
+    print("Scrape Complete!")
     session.commit()

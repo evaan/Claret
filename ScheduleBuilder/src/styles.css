@@ -4,6 +4,9 @@ body {
 h1 {
     color: #6ee7b7;
 }
+p {
+    margin-bottom: 0;
+}
 td.fc-day-today {
     background-color: unset !important;
 }

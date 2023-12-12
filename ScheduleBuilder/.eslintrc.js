@@ -31,5 +31,8 @@ module.exports = {
         "react"
     ],
     "rules": {
+        "semi": 1,
+        "quotes": [1, "double"],
+        "quote-props": [1, "consistent"]
     }
-}
+};

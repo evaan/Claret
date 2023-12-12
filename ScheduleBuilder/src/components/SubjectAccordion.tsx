@@ -8,7 +8,7 @@ import { SectionButton } from "./SectionButton";
 export default function SubjectAccordion(props: {subject: Subject, index: number}) {
     const [courses] = useAtom(coursesAtom);
     const subjectCourses = courses.filter((course: Course) => course.subject === props.subject.name);
-    const uniqueCourses: [string, string][] = []
+    const uniqueCourses: [string, string][] = [];
     const [selectedTab] = useAtom(selectedTabAtom);
 
     subjectCourses.forEach((course: Course) => {
@@ -23,7 +23,7 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
             <Accordion.Body>
                 {selectedTab.includes(props.index.toString()) &&
                     <Accordion>
-                    {uniqueCourses.sort(function(x, y) {return x>y ? 1: -1}).map((course: [id: string, name: string]) => (
+                    {uniqueCourses.sort(function(x, y) {return x>y ? 1: -1;}).map((course: [id: string, name: string]) => (
                         <Accordion.Item eventKey={course[0]} key={course[0]}>
                             <Accordion.Header>
                                 {course[0]} - {course[1]}
@@ -39,5 +39,5 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
                 }
             </Accordion.Body>
         </Accordion.Item>
-    )
+    );
 }

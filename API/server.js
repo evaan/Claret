@@ -22,7 +22,7 @@ console.log("#    #  #     #   # #    # #        #")
 console.log("#       #     ##### #####  ####     #")
 console.log("#       #     #   # #    # #        #")
 console.log("#    #  #     #   # #    # #        #")
-console.log(" ####   ##### #   # #    # ######   # API v0.1")
+console.log(" ####   ##### #   # #    # ######   # API")
 console.log("https://github.com/evaan/Claret\x1b[0m")
 
 app.listen(port, () => {
@@ -51,7 +51,7 @@ app.get("/times/:crn", async (req, res) => {
 //return all subjects, courses, and times
 app.get("/all", async (req, res) => {
     let output = {}
-    output["subjects"] = (await client.query("SELECT * FROM subjects")).rows;
+    output["subjects"] = (await client.query("SELECT * FROM subjects ORDER BY \"friendlyName\" ASC")).rows;
     output["courses"] = (await client.query("SELECT * FROM courses")).rows;
     output["times"] = (await client.query("SELECT * FROM times")).rows;
     output["seatings"] = (await client.query("SELECT * FROM seatings")).rows;
@@ -59,7 +59,7 @@ app.get("/all", async (req, res) => {
 })
 
 app.get("/seating/:crn", async(req, res) => {
-    let child = spawn("python3", ["../Scraper/SeatingScrape.py", req.params.crn])
+    let child = spawn("python", ["../Scraper/SeatingScrape.py", req.params.crn])
     child.on("exit", async function() {
         res.json((await client.query("SELECT * FROM seatings WHERE crn = $1", [req.params.crn])).rows)
     })

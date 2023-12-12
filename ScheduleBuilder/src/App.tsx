@@ -21,13 +21,12 @@ export default function App() {
             setSubjects(data.subjects);
             setCourses(data.courses);
             setTimes(data.times);
-            setSeating(data.seatings)
-        })
-    }, [])
+            setSeating(data.seatings);
+        });
+    }, []);
 
     return (
         <div>
-            {/**<LoadingScreen />**/}
             <Row style={{marginLeft: "2.5%", marginRight: "2.5%"}}>
                 <Col xs={12} md={8} className="order-md-2">
                     <h1 className="text-center">Schedule</h1>
@@ -60,8 +59,9 @@ export default function App() {
                 </Col>
             </Row>
             <div style={{position: "absolute", top: "4px", right: "4px"}}>
-                <Button variant="outline-info" onClick={() => window.open("https://github.com/evaan/Claret", '_blank')!.focus()}><FontAwesomeIcon icon={faGithub} /></Button>
+                <Button style={{marginRight: "4px"}} variant="outline-info" onClick={() => window.open("https://github.com/evaan/Claret/issues", "_blank")!.focus()}>Issues? Leave them here!</Button>
+                <Button variant="outline-info" onClick={() => window.open("https://github.com/evaan/Claret", "_blank")!.focus()}><FontAwesomeIcon icon={faGithub} aria-label="GitHub"/></Button>
             </div>
         </div>
-    )
+    );
 }
