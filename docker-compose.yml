@@ -28,12 +28,14 @@ services:
 
   nginx:
     container_name: nginx
-    image: nginx
+    build:
+      context: .
+      dockerfile: WebServer.Dockerfile
     networks:
       network:
         ipv4_address: 172.12.0.3
-    volumes:
-      - ./ScheduleBuilder/build:/usr/share/nginx/html:ro
+    environment:
+      - API_URL=https://api.evaan.dev
     labels:
       - traefik.enable=true
       - traefik.port=80
@@ -44,8 +46,6 @@ services:
   postgres:
     image: postgres
     restart: always
-    networks:
-      - network
     networks:
       network:
         ipv4_address: 172.12.0.4
