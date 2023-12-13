@@ -10,8 +10,8 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
     const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
     const [seatings, setSeatings] = useAtom(seatingAtom);
 
-    async function updateSeatings(crn: string) {
-        fetch("http://127.0.0.1:8080/seating/" + crn).then(response => response.json()).then((data: Seating[]) => {setSeatings(seatings.map((seating: Seating) => seating.crn == props.section.crn ? data[0] : seating));});
+    async function updateSeatings(crn: string, semester: number) {
+        fetch(`http://127.0.0.1:8080/seating/${crn}/${semester.toString()}`).then(response => response.json()).then((data: Seating[]) => {setSeatings(seatings.map((seating: Seating) => seating.crn == props.section.crn ? data[0] : seating));});
     }
 
     function formatDateString(input: string){
@@ -53,7 +53,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                         <div key={seating.crn}>
                             <p><strong>Seats Available:</strong> {seating.available}/{seating.max}</p>
                             <p><strong>Waitlist:</strong> {seating.waitlist}</p>
-                            <p><strong>Last Checked:</strong> {moment(seating.checked).fromNow().replace("Invalid date", "Never")} <Button variant="link" style={{padding: "0"}} onClick={async () => await updateSeatings(props.section.crn)}>(Update)</Button></p>
+                            <p><strong>Last Checked:</strong> {moment(seating.checked).fromNow().replace("Invalid date", "Never")} <Button variant="link" style={{padding: "0"}} onClick={async () => await updateSeatings(props.section.crn, props.section.semester)}>(Update)</Button></p>
                         </div>
                     ))}
             </ModalBody>

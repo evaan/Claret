@@ -9,13 +9,13 @@ from dbClasses import Base, Seating
 from datetime import datetime
 
 if __name__ == "__main__":
-    if len(argv) <= 1:
-        exit() #no crn to scrape from
+    if len(argv) <= 2:
+        exit() #no crn or semester to scrape from
     load_dotenv()
     engine = create_engine(os.getenv("DB_URL"))
     Base.metadata.create_all(engine)
     session = Session(engine)
-    page = requests.get("https://selfservice.mun.ca/direct/bwckschd.p_disp_detail_sched?term_in=202302&crn_in=" + argv[1])
+    page = requests.get(f"https://selfservice.mun.ca/direct/bwckschd.p_disp_detail_sched?term_in={argv[2]}&crn_in=" + argv[1])
     soup = BeautifulSoup(page.content, "html.parser")
     for caption in soup.find_all("caption"):
         if caption.text == "Registration Availability":

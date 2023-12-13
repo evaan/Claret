@@ -4,6 +4,10 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 class Base(DeclarativeBase):
     pass
 
+class Semester(Base):
+    __tablename__ = "semesters"
+    semester: Mapped[int] = mapped_column(primary_key=True)
+
 class Subject(Base):
     __tablename__ = "subjects"
     name: Mapped[str] = mapped_column(primary_key=True)
@@ -22,6 +26,7 @@ class Course(Base):
     campus: Mapped[str] = mapped_column()
     comment: Mapped[str] = mapped_column(nullable=True)
     credits: Mapped[int] = mapped_column()
+    semester: Mapped[str] = mapped_column(ForeignKey("semesters.semester", ondelete="cascade"))
 
 class CourseTime(Base):
     __tablename__ = "times"

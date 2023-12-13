@@ -15,6 +15,7 @@ export interface Course {
     campus: string;
     comment: string;
     credits: number;
+    semester: number;
 }
 
 export interface Time {

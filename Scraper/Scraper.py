@@ -4,7 +4,7 @@ import re
 from dateutil import parser
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from dbClasses import Base, Course, CourseTime, Subject, Seating
+from dbClasses import Base, Course, CourseTime, Semester, Subject, Seating
 from os import getenv
 from dotenv import load_dotenv
 
@@ -69,7 +69,7 @@ regex = re.compile(r'(?<!\w)(' + '|'.join(re.escape(key) for key in BUILDING_COD
 
 timeId = 0
 
-def processCourse(option, medical = False):
+def processCourse(option, semester, medical = False):
     global timeId
     title = option.text.split(" - ")
     details = option.parent.findNext("td").find_all("td", attrs={"class", "dddefault"})
@@ -94,7 +94,8 @@ def processCourse(option, medical = False):
             subject = title[-2].split()[0] + ("1" if medical else ""),
             campus = campus,
             comment = None if description[0].startswith("Associated Term") else description[0],
-            credits = int(float(list(filter(lambda x: ("Credits" in x), description))[0].lstrip().split(" ")[0]))
+            credits = int(float(list(filter(lambda x: ("Credits" in x), description))[0].lstrip().split(" ")[0])),
+            semester = semester
         ))
     else:
         session.merge(Course(
@@ -105,7 +106,8 @@ def processCourse(option, medical = False):
             subject = title[-2].split()[0] + ("1" if medical else ""),
             campus = campus,
             comment = None if description[0].startswith("Associated Term") else description[0],
-            credits = int(float(list(filter(lambda x: ("Credits" in x), description))[0].lstrip().split(" ")[0]))
+            credits = int(float(list(filter(lambda x: ("Credits" in x), description))[0].lstrip().split(" ")[0])),
+            semester = semester
         ))
         
     if session.query(Seating.crn).filter_by(crn = title[-3]).first() is None:
@@ -166,7 +168,7 @@ def processSubject(name, subject, semester, course="", medical=False):
             processSubject(name, subject, semester, i)
         return
     for option in courses:
-        course = processCourse(option, medical)
+        course = processCourse(option, semester, medical)
 
 if __name__ == "__main__":
     #sql
@@ -176,11 +178,16 @@ if __name__ == "__main__":
     session = Session(engine)
 
     #scraping
-    for subject in processSemester(getLatestSemester()):
+    # TODO: delete db if there is a new semester possibly?
+    latestSemester = getLatestSemester()
+    session.merge(Semester(semester = latestSemester))
+    for subject in processSemester(latestSemester):
         if subject[1] != "%":
             session.merge(Subject(name=subject[1], friendlyName=subject[0]))
             processSubject(subject[0], subject[1], subject[2])
-    for subject in processSemester(getLatestSemester(True)):
+    latestMedSemester = getLatestSemester(True)
+    session.merge(Semester(semester = latestMedSemester))
+    for subject in processSemester(latestMedSemester):
         if subject[1] != "%":
             session.merge(Subject(name=subject[1] + "1", friendlyName=subject[0] + " (Medical)"))
             processSubject(subject[0], subject[1], subject[2], medical=True)
