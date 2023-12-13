@@ -10,3 +10,6 @@ p {
 td.fc-day-today {
     background-color: unset !important;
 }
+table.fc-col-header {
+    background-color: #212529 !important;
+}

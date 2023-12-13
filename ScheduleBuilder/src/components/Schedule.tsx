@@ -17,16 +17,17 @@ export default function Schedule() {
     let overlapping = false;
     const courseTimes: {title: string, start: string, end?: string}[] = [];
 
-    let min = 25;
-    let max = -1;
+    let min = 24;
+    let max = 0;
     for (const course of selectedCourses) {
         const courseTimes = times.filter((time: Time) => time.crn == course.crn);
         courseTimes.forEach((time: Time) => {
-            if (moment(time.startTime, "HH:mm").hour() < min) min = moment(time.startTime, "HH:mm").hour()-2;
-            if (moment(time.endTime, "HH:mm").hour() > max) max = moment(time.endTime, "HH:mm").hour()+3;
+            if (time.startTime == "00:00" || time.endTime == "00:01") return;
+            if (moment(time.startTime, "HH:mm").hour() < min) min = moment(time.startTime, "HH:mm").hour()-1;
+            if (moment(time.endTime, "HH:mm").hour() > max) max = moment(time.endTime, "HH:mm").hour()+1;
         });
     }
-    let NATimes = min == -1 ? 7 : max;
+    let NATimes = min == 24 ? 9 : min;
 
     selectedCourses.forEach((course: Course) => {
         credits += course.credits;
@@ -59,11 +60,11 @@ export default function Schedule() {
     return (
         <div>
             <FullCalendar plugins={[timeGridPlugin]} headerToolbar={{left: "", center: "", right: ""}} allDaySlot={false} hiddenDays={[0]} nowIndicator={false}
-            expandRows={true} events={courseTimes} contentHeight="auto" dayHeaderFormat={{ weekday: "long" }} dayHeaderContent={function(arg) {return(arg.text == "Saturday" ? "Others" : arg.text);}} 
-            slotDuration={max-min > 12 ? "00:30:00" : "00:15:00"} slotMinTime={`${min == 25 ? 7 : min}:00`} slotMaxTime={`${max == -1 ? 17 : max}:00`}/>
+            expandRows={true} events={courseTimes} height="auto" dayHeaderFormat={{ weekday: "long" }} dayHeaderContent={(arg) => arg.text == "Saturday" ? "Others" : arg.text} 
+            slotDuration={max-min > 12 ? "00:30:00" : "00:15:00"} slotMinTime={`${min == 24 ? 9 : min}:00`} slotMaxTime={`${max == 0 ? 17 : max}:00`} />
             {overlapping && <div className="p-3 my-2 bg-warning text-dark rounded">Warning: You have overlapping courses.</div>}
             {credits > 15 && <div className="p-3 my-2 bg-warning text-dark rounded">Warning: Without explicit permission, MUN does not allow registration for more than 15 credit hours.</div>}
-            <Accordion className="mt-2">
+            <Accordion className="mt-2" defaultActiveKey="overview">
                 <Accordion.Item eventKey="overview">
                     <Accordion.Header>Overview</Accordion.Header>
                     <Accordion.Body>
