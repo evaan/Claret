@@ -17,7 +17,7 @@ export default function App() {
     const [selectedTab, setSelectedTab] = useAtom(selectedTabAtom);
 
     React.useEffect(() => {
-        fetch((process.env.NODE_ENV === "production" ? "https://claret.evaan.dev" : "http://127.0.0.1:8080")+"/all").then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[]}) => {
+        fetch((process.env.NODE_ENV === "production" ? "https://api.evaan.dev" : "http://127.0.0.1:8080")+"/all").then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[]}) => {
             setSubjects(data.subjects);
             setCourses(data.courses);
             setTimes(data.times);
