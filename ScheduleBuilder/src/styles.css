@@ -13,3 +13,6 @@ td.fc-day-today {
 table.fc-col-header {
     background-color: #212529 !important;
 }
+.fc-time-grid .fc-slats td {
+    height: 1em;
+}
