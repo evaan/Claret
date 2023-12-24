@@ -24,7 +24,7 @@ export default function Schedule() {
         const courseTimes = times.filter((time: Time) => time.crn == course.crn);
         courseTimes.forEach((time: Time) => {
             if (time.startTime == "00:00" || time.endTime == "00:01") {NACourses++; return;}
-            if (moment(time.startTime, "HH:mm").hour() < min) min = moment(time.startTime, "HH:mm").hour()-1;
+            if (moment(time.startTime, "HH:mm").hour() < min) min = moment(time.startTime, "HH:mm").hour();
             if (moment(time.endTime, "HH:mm").hour() > max) max = moment(time.endTime, "HH:mm").hour()+1;
         });
     }
