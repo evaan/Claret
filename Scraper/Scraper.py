@@ -178,18 +178,19 @@ if __name__ == "__main__":
     session = Session(engine)
 
     #scraping
-    # TODO: delete db if there is a new semester possibly?
     latestSemester = getLatestSemester()
+    latestMedSemester = getLatestSemester(True)
+    for semester in session.query(Semester).filter(Semester.semester != latestSemester, Semester.semester != latestMedSemester).all():
+        session.delete(semester)
     session.merge(Semester(semester = latestSemester))
     for subject in processSemester(latestSemester):
         if subject[1] != "%":
             session.merge(Subject(name=subject[1], friendlyName=subject[0]))
             processSubject(subject[0], subject[1], subject[2])
-    latestMedSemester = getLatestSemester(True)
     session.merge(Semester(semester = latestMedSemester))
     for subject in processSemester(latestMedSemester):
         if subject[1] != "%":
             session.merge(Subject(name=subject[1] + "1", friendlyName=subject[0] + " (Medical)"))
             processSubject(subject[0], subject[1], subject[2], medical=True)
-    print("Scrape Complete!")
     session.commit()
+    print("Scrape Complete!")

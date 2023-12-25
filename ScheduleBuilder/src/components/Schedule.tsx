@@ -19,23 +19,24 @@ export default function Schedule() {
 
     let min = 24;
     let max = 0;
+    let NACourses = 0;
     for (const course of selectedCourses) {
         const courseTimes = times.filter((time: Time) => time.crn == course.crn);
         courseTimes.forEach((time: Time) => {
-            if (time.startTime == "00:00" || time.endTime == "00:01") return;
-            if (moment(time.startTime, "HH:mm").hour() < min) min = moment(time.startTime, "HH:mm").hour()-1;
+            if (time.startTime == "00:00" || time.endTime == "00:01") {NACourses++; return;}
+            if (moment(time.startTime, "HH:mm").hour() < min) min = moment(time.startTime, "HH:mm").hour();
             if (moment(time.endTime, "HH:mm").hour() > max) max = moment(time.endTime, "HH:mm").hour()+1;
         });
     }
-    let NATimes = min == 24 ? 9 : min;
+    let NAStartTime = min == 24 ? 9 : min;
 
     selectedCourses.forEach((course: Course) => {
         credits += course.credits;
         const courseTimes1 = times.filter((time: Time) => time.crn == course.crn);
         courseTimes1.forEach((time: Time) => {
             if ((time.startTime == "00:00" && time.endTime == "00:01") || time.startTime == "TBA" || time.startTime == "TBA") {
-                courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days",  6).toDate().toISOString().split("T")[0]+"T"+NATimes.toString().padStart(2, "0")+":00"});
-                NATimes++;
+                courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days",  6).toDate().toISOString().split("T")[0]+"T"+NAStartTime.toString().padStart(2, "0")+":00"});
+                NAStartTime++;
             } else {
                 if (time.days.includes("M")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days",  1).toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add("days",  1).toDate().toISOString().split("T")[0]+"T"+time.endTime});
                 if (time.days.includes("T")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days",  2).toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add("days",  2).toDate().toISOString().split("T")[0]+"T"+time.endTime});
@@ -56,12 +57,12 @@ export default function Schedule() {
             else overlapping = false;
         }
     }
-
+    
     return (
         <div>
             <FullCalendar plugins={[timeGridPlugin]} headerToolbar={{left: "", center: "", right: ""}} allDaySlot={false} hiddenDays={[0]} nowIndicator={false}
             expandRows={true} events={courseTimes} height="auto" dayHeaderFormat={{ weekday: "long" }} dayHeaderContent={(arg) => arg.text == "Saturday" ? "Others" : arg.text} 
-            slotDuration={max-min > 12 ? "00:30:00" : "00:15:00"} slotMinTime={`${min == 24 ? 9 : min}:00`} slotMaxTime={`${max == 0 ? 17 : max}:00`} />
+            slotDuration={max-min > 12 ? "00:30:00" : "00:15:00"} slotMinTime={`${min == 24 ? 9 : min}:00`} slotMaxTime={`${Math.max((max == 0 ? 17 : max), (min == 24 ? 9 : min)+NACourses)}:00`} />
             {overlapping && <div className="p-3 my-2 bg-warning text-dark rounded">Warning: You have overlapping courses.</div>}
             {credits > 15 && <div className="p-3 my-2 bg-warning text-dark rounded">Warning: Without explicit permission, MUN does not allow registration for more than 15 credit hours.</div>}
             <Accordion className="mt-2" defaultActiveKey="overview">
