@@ -117,8 +117,7 @@ func ics(w http.ResponseWriter, r *http.Request) {
 			out_buf.Write([]byte("DTSTART;TZID=" + dt_start.Location().String() + ":" + dt_start.Format(ICAL_DATE_TIME_LOCAL_FORM) + "\r\n"))
 			out_buf.Write([]byte("DTEND;TZID=" + dt_end.Location().String() + ":" + dt_end.Format(ICAL_DATE_TIME_LOCAL_FORM) + "\r\n"))
 
-			// FIX RRULE: convert to UTC
-			out_buf.Write([]byte("RRULE:FREQ=WEEKLY;UNTIL=" + end_reccurence_date.Format(ICAL_DATE_TIME_LOCAL_FORM) + "Z	\r\n"))
+			out_buf.Write([]byte("RRULE:FREQ=WEEKLY;UNTIL=" + end_reccurence_date.UTC().Format(ICAL_DATE_TIME_LOCAL_FORM) + "Z	\r\n"))
 			out_buf.Write([]byte("DTSTAMP;TZID=" + time.Now().Location().String() + ":" + time.Now().Format(ICAL_DATE_TIME_LOCAL_FORM) + "\r\n"))
 
 			out_buf.Write([]byte("END:VEVENT\r\n"))
