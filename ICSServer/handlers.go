@@ -63,8 +63,7 @@ func ics(w http.ResponseWriter, r *http.Request) {
 	out_buf.Write([]byte("METHOD:PUBLISH\r\n"))
 
 	// Calendar Name & Description
-	cal_name := "Courses (via Claret)"
-	// out_buf.Write([]byte("NAME:" + cal_name + "\r\n"))
+	cal_name := "Courses (via Claret)" // TODO: Include semester names (ex: Fall 2023)
 	out_buf.Write([]byte("X-WR-CALNAME:" + cal_name + "\r\n"))
 
 	for rows.Next() {
