@@ -89,7 +89,9 @@ func ics(w http.ResponseWriter, r *http.Request) {
 		day_of_week := strings.Split(days, "")
 		start_date, end_reccurence_date, err := dateRangeParse(date_range)
 		if err != nil {
-			logger.Fatal(err) // DO SOMETHING
+			// TODO: If error parsing date range, use some default semester range
+			// For now, skip entry
+			continue
 		}
 
 		// TODO: multiple days a week can be expressed in RRULE, so this loop could be removed
