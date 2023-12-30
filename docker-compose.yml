@@ -17,10 +17,21 @@ services:
     command:
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - --certificatesresolvers.letsencrypt.acme.email=evanw
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.delaybeforecheck=0
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
     ports:
       - 80:80
+      - 443:443
+      - 8081:8080
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
 
   nginx:
     container_name: nginx
@@ -36,7 +47,8 @@ services:
       - traefik.enable=true
       - traefik.port=80
       - traefik.http.routers.nginx.rule=Host(`claretformun.com`)
-      - traefik.http.routers.nginx.entrypoints=web
+      - traefik.http.routers.nginx.entrypoints=websecure
+      - traefik.http.routers.nginx.tls=true
 
   postgres:
     image: postgres
@@ -71,7 +83,8 @@ services:
       - traefik.enable=true
       - traefik.port=8080
       - traefik.http.routers.api.rule=Host(`api.claretformun.com`)
-      - traefik.http.routers.api.entrypoints=web
+      - traefik.http.routers.api.entrypoints=websecure
+      - traefik.http.routers.api.tls=true
 
   claretscraper:
     container_name: claretScraper
