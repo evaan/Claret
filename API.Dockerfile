@@ -1,11 +1,8 @@
-FROM node:latest
-COPY API /app/API
-COPY Scraper /app/Scraper
+FROM golang:latest AS build
+COPY API /app
 WORKDIR /app/API
-RUN apt-get update
-RUN apt-get install python3-full tzdata -y
-RUN npm i
-RUN python3 -m venv /app/venv
-ENV PATH="/app/venv/bin:$PATH"
-RUN pip install -r /app/Scraper/requirements.txt
-CMD node server.js
+RUN CGO_ENABLED=0 GOOS=linux go build -o /api
+FROM gcr.io/distroless/base-debian11:latest
+COPY --from=build-stage /api /api
+USER nonroot:nonroot
+CMD ["/api"]

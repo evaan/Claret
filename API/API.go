@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/fatih/structs"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -68,7 +67,7 @@ func all(w http.ResponseWriter, r *http.Request) {
 			logger.Fatal(err)
 		}
 
-		output["subjects"] = append(output["subjects"], structs.Map(subject))
+		output["subjects"] = append(output["subjects"], subject)
 	}
 
 	courses, err := db.Query("SELECT * FROM courses")
@@ -85,7 +84,7 @@ func all(w http.ResponseWriter, r *http.Request) {
 			logger.Fatal(err)
 		}
 
-		output["courses"] = append(output["courses"], structs.Map(course))
+		output["courses"] = append(output["courses"], course)
 	}
 
 	times, err := db.Query("SELECT times.crn, times.days, times.\"startTime\", times.\"endTime\", times.location FROM times")
@@ -102,7 +101,7 @@ func all(w http.ResponseWriter, r *http.Request) {
 			logger.Fatal(err)
 		}
 
-		output["times"] = append(output["times"], structs.Map(time))
+		output["times"] = append(output["times"], time)
 	}
 
 	seatings, err := db.Query("SELECT * FROM seatings")
@@ -119,7 +118,7 @@ func all(w http.ResponseWriter, r *http.Request) {
 			logger.Fatal(err)
 		}
 
-		output["seatings"] = append(output["seatings"], structs.Map(seating))
+		output["seatings"] = append(output["seatings"], seating)
 	}
 
 	jsonString, err := json.Marshal(output)
