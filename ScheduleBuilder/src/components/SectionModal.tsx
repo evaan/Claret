@@ -11,7 +11,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
     const [seatings, setSeatings] = useAtom(seatingAtom);
 
     async function updateSeatings(crn: string, semester: number) {
-        fetch(`${process.env.NODE_ENV === "production" ? "https://api.evaan.dev" : "http://127.0.0.1:8080"}/seating/${crn}/${semester.toString()}`).then(response => response.json()).then((data: Seating[]) => {setSeatings(seatings.map((seating: Seating) => seating.crn == props.section.crn ? data[0] : seating));});
+        fetch(`${process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080"}/seating/${crn}/${semester.toString()}`).then(response => response.json()).then((data: Seating[]) => {setSeatings(seatings.map((seating: Seating) => seating.crn == props.section.crn ? data[0] : seating));});
     }
 
     function formatDateString(input: string){
