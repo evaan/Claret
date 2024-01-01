@@ -223,24 +223,35 @@ func times(w http.ResponseWriter, r *http.Request) {
 }
 
 func seating(w http.ResponseWriter, r *http.Request) {
-	var seating Seating
+	var output []Seating
 
 	cmd := exec.Command("python3", "../Scraper/SeatingScrape.py", r.URL.Query().Get("crn"), r.URL.Query().Get("semester"))
 	cmd.Run()
 
-	err := db.QueryRow("SELECT * FROM seatings WHERE seatings.crn = $1", r.URL.Query().Get("crn")).Scan(&seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked)
+	seatings, err := db.Query("SELECT * FROM seatings WHERE seatings.crn = $1", r.URL.Query().Get("crn"))
 	if err != nil {
-		logger.Fatal(nil)
+		logger.Fatal(err)
 	}
 
-	output, err := json.Marshal(seating)
+	for seatings.Next() {
+		var seating Seating
+
+		err := seatings.Scan(&seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		output = append(output, seating)
+	}
+
+	jsonString, err := json.Marshal(output)
 	if err != nil {
 		logger.Fatal(err)
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(output))
+	w.Write([]byte(jsonString))
 }
 
 func main() {
