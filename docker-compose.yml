@@ -123,6 +123,6 @@ services:
     labels:
       - traefik.enable=true
       - traefik.port=8000
-      - traefik.http.routers.ics.rule=Host(`claret-ics.evaan.dev`)
+      - traefik.http.routers.ics.rule=Host(`ics.claretformun.com`)
       - traefik.http.routers.ics.entrypoints=websecure
       - traefik.http.routers.ics.tls=true
