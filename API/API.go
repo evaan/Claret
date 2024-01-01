@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -131,6 +132,117 @@ func all(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(jsonString))
 }
 
+func subjects(w http.ResponseWriter, r *http.Request) {
+	var output []Subject
+
+	subjects, err := db.Query("SELECT * FROM subjects")
+	if err != nil {
+		logger.Fatal(err)
+	}
+	defer subjects.Close()
+
+	for subjects.Next() {
+		var subject Subject
+
+		err := subjects.Scan(&subject.Name, &subject.FriendlyName)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		output = append(output, subject)
+	}
+
+	jsonString, err := json.Marshal(output)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(jsonString))
+}
+
+func courses(w http.ResponseWriter, r *http.Request) {
+	var output []Course
+
+	courses, err := db.Query("SELECT * FROM courses WHERE courses.crn LIKE $1", "%"+r.URL.Query().Get("crn")+"%")
+	if err != nil {
+		logger.Fatal(err)
+	}
+	defer courses.Close()
+
+	for courses.Next() {
+		var course Course
+
+		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.Campus, &course.Comment, &course.Credits, &course.Semester)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		output = append(output, course)
+	}
+
+	course, err := json.Marshal(output)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(course))
+}
+
+func times(w http.ResponseWriter, r *http.Request) {
+	var output []Time
+
+	times, err := db.Query("SELECT times.crn, times.days, times.\"startTime\", times.\"endTime\", times.location FROM times WHERE times.crn = $1", r.URL.Query().Get("crn"))
+	if err != nil {
+		logger.Fatal(err)
+	}
+	defer times.Close()
+
+	for times.Next() {
+		var time Time
+
+		err := times.Scan(&time.Crn, &time.Days, &time.StartTime, &time.EndTime, &time.Location)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		output = append(output, time)
+	}
+
+	course, err := json.Marshal(output)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(course))
+}
+
+func seating(w http.ResponseWriter, r *http.Request) {
+	var seating Seating
+
+	cmd := exec.Command("python3", "../Scraper/SeatingScrape.py", r.URL.Query().Get("crn"), r.URL.Query().Get("semester"))
+	cmd.Run()
+
+	err := db.QueryRow("SELECT * FROM seatings WHERE seatings.crn = $1", r.URL.Query().Get("crn")).Scan(&seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked)
+	if err != nil {
+		logger.Fatal(nil)
+	}
+
+	output, err := json.Marshal(seating)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(output))
+}
+
 func main() {
 	logger = log.Default()
 	logger.Println("👋 Claret API")
@@ -158,6 +270,10 @@ func main() {
 	logger.Println("💿 Connected to Database!")
 
 	http.HandleFunc("/all", all)
+	http.HandleFunc("/subjects", subjects)
+	http.HandleFunc("/courses", courses)
+	http.HandleFunc("/times", times)
+	http.HandleFunc("/seating", seating)
 
 	logger.Println("✅ API running server on port", PORT)
 	http.ListenAndServe(":"+PORT, nil)
