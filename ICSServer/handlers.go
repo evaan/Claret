@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -18,27 +17,12 @@ func ics(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	query_crn := r.URL.Query().Get("crn")
-	query_semester := r.URL.Query().Get("semester")
-
-	if query_semester == "" {
-		logger.Println(err)
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	query_semester_int, err := strconv.Atoi(query_semester)
-
-	if err != nil {
-		logger.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
 
 	if query_crn == "" {
-		rows, err = db.Query("SELECT courses.semester, times.crn, courses.id, courses.name, courses.\"dateRange\", times.days, times.\"startTime\", times.\"endTime\", times.location FROM times JOIN courses ON times.crn = courses.crn WHERE courses.semester = $1", query_semester_int)
+		rows, err = db.Query("SELECT courses.semester, times.crn, courses.id, courses.name, courses.\"dateRange\", times.days, times.\"startTime\", times.\"endTime\", times.location FROM times JOIN courses ON times.crn = courses.crn")
 	} else {
 		query_crn_split := strings.Split(query_crn, ",")
-		rows, err = db.Query("SELECT courses.semester, times.crn, courses.id, courses.name, courses.\"dateRange\", times.days, times.\"startTime\", times.\"endTime\", times.location FROM times JOIN courses ON times.crn = courses.crn WHERE courses.semester = $1 AND courses.crn = ANY($2);", query_semester_int, query_crn_split)
+		rows, err = db.Query("SELECT courses.semester, times.crn, courses.id, courses.name, courses.\"dateRange\", times.days, times.\"startTime\", times.\"endTime\", times.location FROM times JOIN courses ON times.crn = courses.crn WHERE courses.crn = ANY($1);", query_crn_split)
 	}
 
 	if err != nil {
