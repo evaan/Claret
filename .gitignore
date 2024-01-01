@@ -11,3 +11,8 @@ node_modules/
 .DS_Store
 
 .idea/
+
+ClaretAPI.exe
+ClaretAPI
+
+postgres-data
