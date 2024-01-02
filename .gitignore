@@ -12,7 +12,7 @@ node_modules/
 
 .idea/
 
-ClaretAPI
 ClaretAPI.exe
+ClaretAPI
 
 postgres-data

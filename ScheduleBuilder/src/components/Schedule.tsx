@@ -7,6 +7,7 @@ import { Course, Time } from "../api/types";
 import * as Moment from "moment";
 import { extendMoment } from "moment-range";
 import { Accordion, Button } from "react-bootstrap";
+import { ICalButton } from "./ICalButton";
 const moment = extendMoment(Moment);
 
 export default function Schedule() {
@@ -17,18 +18,21 @@ export default function Schedule() {
     let overlapping = false;
     const courseTimes: {title: string, start: string, end?: string}[] = [];
 
-    let min = 24;
-    let max = 0;
+    const startTimes: number[] = [];
+    const endTimes: number[] = [];
     let NACourses = 0;
     for (const course of selectedCourses) {
         const courseTimes = times.filter((time: Time) => time.crn == course.crn);
         courseTimes.forEach((time: Time) => {
             if (time.startTime == "00:00" || time.endTime == "00:01") {NACourses++; return;}
-            if (moment(time.startTime, "HH:mm").hour() < min) min = moment(time.startTime, "HH:mm").hour();
-            if (moment(time.endTime, "HH:mm").hour() > max) max = moment(time.endTime, "HH:mm").hour()+1;
+            startTimes.push(moment(time.startTime, "HH:mm").hour());
+            endTimes.push(moment(time.endTime, "HH:mm").hour()+1);
         });
     }
-    let NAStartTime = min == 24 ? 9 : min;
+    let NAStartTime = startTimes.length == 0 ? 9 : Math.min(...startTimes);
+
+    const min: number = Math.min(...startTimes);
+    const max: number = Math.max(...endTimes);
 
     selectedCourses.forEach((course: Course) => {
         credits += course.credits;
@@ -62,7 +66,7 @@ export default function Schedule() {
         <div>
             <FullCalendar plugins={[timeGridPlugin]} headerToolbar={{left: "", center: "", right: ""}} allDaySlot={false} hiddenDays={[0]} nowIndicator={false}
             expandRows={true} events={courseTimes} height="auto" dayHeaderFormat={{ weekday: "long" }} dayHeaderContent={(arg) => arg.text == "Saturday" ? "Others" : arg.text} 
-            slotDuration={max-min > 12 ? "00:30:00" : "00:15:00"} slotMinTime={`${min == 24 ? 9 : min}:00`} slotMaxTime={`${Math.max((max == 0 ? 17 : max), (min == 24 ? 9 : min)+NACourses)}:00`} />
+            slotDuration={max-min > 12 ? "00:30:00" : "00:15:00"} slotMinTime={`${startTimes.length == 0 ? 9 : min}:00`} slotMaxTime={`${Math.max((endTimes.length == 0 ? 17 : max), (startTimes.length == 0 ? 9 : min)+NACourses)}:00`} />
             {overlapping && <div className="p-3 my-2 bg-warning text-dark rounded">Warning: You have overlapping courses.</div>}
             {credits > 15 && <div className="p-3 my-2 bg-warning text-dark rounded">Warning: Without explicit permission, MUN does not allow registration for more than 15 credit hours.</div>}
             <Accordion className="mt-2" defaultActiveKey="overview">
@@ -77,6 +81,7 @@ export default function Schedule() {
                                 <Button variant="text" style={{paddingLeft: "8px", paddingRight: "8px", paddingTop: "4px", paddingBottom: "4px"}} onClick={() => setSelectedCourses(selectedCourses.filter((course1: Course) => course1 !== course))}>&#10006;</Button>
                             </div>
                         ))}
+                        <ICalButton/>
                     </Accordion.Body>
                 </Accordion.Item>
             </Accordion>
