@@ -49,13 +49,19 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                         <li key={time.id}>{formatDateString(time.days)} - {moment(time.startTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")}-{moment(time.endTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")} - {time.location}</li>
                     ))}
                 </ul>
-                    {seatings.filter((seating: Seating) => seating.crn == props.section.crn).map((seating: Seating) => (
+                {seatings.filter((seating: Seating) => seating.crn == props.section.crn).map((seating: Seating) => {
+                    if (props.isOpen && (moment(seating.checked).isBefore(moment().subtract(1, "hours")) || seating.checked == "Never")) {
+                        setTimeout(() => {updateSeatings(props.section.crn, props.section.semester);}, 200);
+                    }
+                    return (
                         <div key={seating.crn}>
                             <p><strong>Seats Available:</strong> {seating.available}/{seating.max}</p>
                             <p><strong>Waitlist:</strong> {seating.waitlist}</p>
                             <p><strong>Last Checked:</strong> {moment(seating.checked).fromNow().replace("Invalid date", "Never")} <Button variant="link" style={{padding: "0"}} onClick={async () => await updateSeatings(props.section.crn, props.section.semester)}>(Update)</Button></p>
                         </div>
-                    ))}
+                    );
+
+                })}
             </ModalBody>
             <ModalFooter>
                 <Button variant="secondary" onClick={() => props.onHide()}>Close</Button>

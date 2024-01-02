@@ -7,12 +7,15 @@ import { Course, Time } from "../api/types";
 import * as Moment from "moment";
 import { extendMoment } from "moment-range";
 import { Accordion, Button } from "react-bootstrap";
-import { ICalButton } from "./ICalButton";
+import ICalModal from "./ICalModal";
 const moment = extendMoment(Moment);
 
 export default function Schedule() {
     const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
     const [times] = useAtom(timesAtom);
+
+    const [modalOpen, setModalOpen] = React.useState<boolean>(false);
+    const closeModal = () => setModalOpen(false);
 
     let credits = 0;
     let overlapping = false;
@@ -81,7 +84,10 @@ export default function Schedule() {
                                 <Button variant="text" style={{paddingLeft: "8px", paddingRight: "8px", paddingTop: "4px", paddingBottom: "4px"}} onClick={() => setSelectedCourses(selectedCourses.filter((course1: Course) => course1 !== course))}>&#10006;</Button>
                             </div>
                         ))}
-                        <ICalButton/>
+                        <Button className="mt-3 w-100" onClick={() => setModalOpen(true)} disabled={selectedCourses.length == 0}>
+                            {selectedCourses.length == 0 ? "Subscribe to Calendar (More than one course required)" : "Subscribe to Calendar"}
+                        </Button>
+                        <ICalModal isOpen={modalOpen} onHide={closeModal}/>
                     </Accordion.Body>
                 </Accordion.Item>
             </Accordion>

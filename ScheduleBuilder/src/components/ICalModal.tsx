@@ -16,7 +16,7 @@ export default function ICalModal(props: { isOpen: boolean; onHide: () => void }
         const url: string = generateiCalURL();
         navigator.clipboard.writeText(url);
         setIsCopied(true);
-        setTimeout(() => {setIsCopied(false)}, 1000);
+        setTimeout(() => {setIsCopied(false);}, 1000);
     };
 
     const [isCopied, setIsCopied] = useState(false);
