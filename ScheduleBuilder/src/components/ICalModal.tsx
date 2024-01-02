@@ -9,7 +9,7 @@ export default function ICalModal(props: { isOpen: boolean; onHide: () => void }
     
     const generateiCalURL = () => {
         const crnString: string = selectedCourses.map(obj => obj.crn).join(",");
-        return "https://ics.claretformun.com/feed.ics?crns=" + crnString;
+        return "https://ics.claretformun.com/feed.ics?crn=" + crnString;
     };
     
     const copyURL = () => {
