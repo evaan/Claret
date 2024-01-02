@@ -1,11 +1,12 @@
-FROM node:latest
-COPY API /app/API
-COPY Scraper /app/Scraper
+FROM golang:latest AS build
+WORKDIR /app
+COPY ./API /app
+RUN CGO_ENABLED=0 GOOS=linux go build -o /api
+FROM python:alpine
+RUN mkdir -p /app/API
+COPY --from=build /api /app/API/api
+COPY ./Scraper /app/Scraper
+WORKDIR /app/Scraper
+RUN pip install -r requirements.txt
 WORKDIR /app/API
-RUN apt-get update
-RUN apt-get install python3-full tzdata -y
-RUN npm i
-RUN python3 -m venv /app/venv
-ENV PATH="/app/venv/bin:$PATH"
-RUN pip install -r /app/Scraper/requirements.txt
-CMD node server.js
+CMD ["./api"]
