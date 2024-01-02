@@ -7,6 +7,7 @@ import { Course, Time } from "../api/types";
 import * as Moment from "moment";
 import { extendMoment } from "moment-range";
 import { Accordion, Button } from "react-bootstrap";
+import { ICalButton } from "./ICalButton";
 const moment = extendMoment(Moment);
 
 export default function Schedule() {
@@ -77,6 +78,7 @@ export default function Schedule() {
                                 <Button variant="text" style={{paddingLeft: "8px", paddingRight: "8px", paddingTop: "4px", paddingBottom: "4px"}} onClick={() => setSelectedCourses(selectedCourses.filter((course1: Course) => course1 !== course))}>&#10006;</Button>
                             </div>
                         ))}
+                        <ICalButton/>
                     </Accordion.Body>
                 </Accordion.Item>
             </Accordion>

@@ -101,3 +101,28 @@ services:
       DB_URL: "postgresql://postgres:admin@172.12.0.4:5432/claret"
       PORT: 8080
       TZ: America/St_Johns
+
+  icsserver:
+    container_name: icsServer
+    #restart: always
+    build:
+      context: .
+      dockerfile: ICSServer.Dockerfile
+    networks:
+      network:
+        ipv4_address: 172.12.0.7
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+    environment:
+      DB_URL: "postgresql://postgres:admin@172.12.0.4:5432/claret"
+      PORT: 8000
+      TZ: America/St_Johns
+      BANNER_TZ: America/St_Johns
+    labels:
+      - traefik.enable=true
+      - traefik.port=8000
+      - traefik.http.routers.ics.rule=Host(`ics.claretformun.com`)
+      - traefik.http.routers.ics.entrypoints=websecure
+      - traefik.http.routers.ics.tls=true
