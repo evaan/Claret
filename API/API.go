@@ -6,9 +6,13 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
+	"time"
 
+	"github.com/PuerkitoBio/goquery"
+	"github.com/gocolly/colly"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/joho/godotenv/autoload"
+	"github.com/lestrrat-go/strftime"
 )
 
 var db *sql.DB
@@ -47,7 +51,7 @@ type Seating struct {
 	Crn       string `json:"crn"`
 	Available string `json:"available"`
 	Max       string `json:"max"`
-	Waitlist  string `json:"waitlist"`
+	Waitlist  any    `json:"waitlist"`
 	Checked   string `json:"checked"`
 }
 
@@ -195,6 +199,12 @@ func courses(w http.ResponseWriter, r *http.Request) {
 func times(w http.ResponseWriter, r *http.Request) {
 	var output []Time
 
+	if r.URL.Query().Get("crn") == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("CRN was not provided, please add ?crn={crn} in your URL."))
+		return
+	}
+
 	times, err := db.Query("SELECT times.crn, times.days, times.\"startTime\", times.\"endTime\", times.location FROM times WHERE times.crn = $1", r.URL.Query().Get("crn"))
 	if err != nil {
 		logger.Fatal(err)
@@ -223,28 +233,47 @@ func times(w http.ResponseWriter, r *http.Request) {
 }
 
 func seating(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("crn") == "" || r.URL.Query().Get("semester") == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("CRN or Semester was not provided, please add ?crn={crn}&semester={semester} in your URL."))
+		return
+	}
+
+	c := colly.NewCollector()
+
+	var cells []string
+
+	c.OnHTML("caption", func(e *colly.HTMLElement) {
+		if e.Text == "Registration Availability" {
+			e.DOM.Parent().Find("td.dddefault").Each(func(i int, s *goquery.Selection) {
+				cells = append(cells, s.Text())
+			})
+		}
+	})
+
+	c.Visit("https://selfservice.mun.ca/direct/bwckschd.p_disp_detail_sched?term_in=" + r.URL.Query().Get("semester") + "&crn_in=" + r.URL.Query().Get("crn"))
+	c.Wait()
+
 	var output []Seating
+	var seating Seating
 
-	cmd := exec.Command("python3", "../Scraper/SeatingScrape.py", r.URL.Query().Get("crn"), r.URL.Query().Get("semester"))
-	cmd.Run()
-
-	seatings, err := db.Query("SELECT * FROM seatings WHERE seatings.crn = $1", r.URL.Query().Get("crn"))
+	seating.Crn = r.URL.Query().Get("crn")
+	if len(cells) != 0 {
+		seating.Available = cells[2]
+		seating.Max = cells[0]
+		if len(cells) >= 6 {
+			seating.Waitlist = cells[4]
+		} else {
+			seating.Waitlist = nil
+		}
+	}
+	checkedTime, err := strftime.Format("%Y-%m-%dT%H:%M", time.Now())
 	if err != nil {
 		logger.Fatal(err)
 	}
+	seating.Checked = checkedTime
 
-	for seatings.Next() {
-		var seating Seating
-
-		err := seatings.Scan(&seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked)
-		if err != nil {
-			logger.Fatal(err)
-		}
-
-		output = append(output, seating)
-	}
-
-	jsonString, err := json.Marshal(output)
+	jsonString, err := json.Marshal(append(output, seating))
 	if err != nil {
 		logger.Fatal(err)
 	}
