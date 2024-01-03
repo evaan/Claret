@@ -46,7 +46,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.port=80
-      - traefik.http.routers.nginx.rule=Host(`claretformun.com`)
+      - traefik.http.routers.nginx.rule=Host(`claretformun.com, www.claretformun.com`)
       - traefik.http.routers.nginx.entrypoints=websecure
       - traefik.http.routers.nginx.tls=true
 
