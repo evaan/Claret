@@ -78,9 +78,6 @@ services:
     build:
       context: .
       dockerfile: ICSServer.Dockerfile
-    networks:
-      network:
-        ipv4_address: 172.12.0.7
     depends_on:
       - postgres
     ports:
