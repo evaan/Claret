@@ -1,35 +1,17 @@
 version: "3"
 
-networks:
-  network:
-    ipam:
-      config:
-        - subnet: 172.12.0.0/24
-
 services:
   traefik:
     image: traefik
     container_name: traefik
     restart: always
-    networks:
-      network:
-        ipv4_address: 172.12.0.2
     command:
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--api.dashboard=true"
-      - "--api.insecure=true"
-      - --certificatesresolvers.letsencrypt.acme.email=evanw
-      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge.delaybeforecheck=0
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
     ports:
       - 80:80
       - 443:443
-      - 8081:8080
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -38,9 +20,6 @@ services:
     build:
       context: .
       dockerfile: WebServer.Dockerfile
-    networks:
-      network:
-        ipv4_address: 172.12.0.3
     environment:
       - API_URL=https://api.evaan.dev
     labels:
@@ -51,11 +30,8 @@ services:
       - traefik.http.routers.nginx.tls=true
 
   postgres:
-    image: postgres
+    image: postgres:alpine
     restart: always
-    networks:
-      network:
-        ipv4_address: 172.12.0.4
     environment:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: claret
@@ -68,15 +44,12 @@ services:
     build:
       context: .
       dockerfile: API.Dockerfile
-    networks:
-      network:
-        ipv4_address: 172.12.0.5
     depends_on:
       - postgres
     ports:
       - "8080:8080"
     environment:
-      DB_URL: "postgresql://postgres:admin@172.12.0.4:5432/claret"
+      DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
       PORT: 8080
       TZ: America/St_Johns
     labels:
@@ -92,13 +65,10 @@ services:
     build:
       context: .
       dockerfile: Scraper.Dockerfile
-    networks:
-      network:
-        ipv4_address: 172.12.0.6
     depends_on:
       - postgres
     environment:
-      DB_URL: "postgresql://postgres:admin@172.12.0.4:5432/claret"
+      DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
       PORT: 8080
       TZ: America/St_Johns
 
