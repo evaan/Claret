@@ -1,4 +1,4 @@
-FROM golang:latest AS build-stage
+FROM golang:alpine AS build-stage
 WORKDIR /app
 COPY ./API /app
 RUN CGO_ENABLED=0 GOOS=linux go build -o /api
