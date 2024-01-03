@@ -15,7 +15,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
     }
 
     function formatDateString(input: string){
-        input = input.replace("M", "Monday, ").replace("T", "Tuesday, ").replace("W", "Wednesday, ").replace("R", "Thursday, ").replace("F", "Friday, ");
+        input = input.replace("M", "Monday, ").replace("T", "Tuesday, ").replace("W", "Wednesday, ").replace("R", "Thursday, ").replace("F", "Friday, ").replace("S", "Saturday, ").replace("U", "Sunday, ");
         if (input.endsWith(", ")) input = input.slice(0, -2);
         return input;
     }

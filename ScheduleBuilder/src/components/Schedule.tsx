@@ -37,19 +37,43 @@ export default function Schedule() {
     const min: number = Math.min(...startTimes);
     const max: number = Math.max(...endTimes);
 
+    let otherDay = false;
+    function dayOfWeekName(day: string) {
+        if (day == "Sunday") {
+            if (!otherDay) otherDay = true;
+            else return "Others";
+        }
+        if (day == "Saturday" && !weekend) return "Others";
+        return day;
+    }
+
+    let weekend = false;
+
     selectedCourses.forEach((course: Course) => {
         credits += course.credits;
-        const courseTimes1 = times.filter((time: Time) => time.crn == course.crn);
-        courseTimes1.forEach((time: Time) => {
+        times.filter((time: Time) => time.crn == course.crn).forEach((time: Time) => {
+            if (time.days.includes("M")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add(1, "days").toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add(1, "days").toDate().toISOString().split("T")[0]+"T"+time.endTime});
+            if (time.days.includes("T")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add(2, "days").toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add(2, "days").toDate().toISOString().split("T")[0]+"T"+time.endTime});
+            if (time.days.includes("W")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add(3, "days").toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add(3, "days").toDate().toISOString().split("T")[0]+"T"+time.endTime});
+            if (time.days.includes("R")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add(4, "days").toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add(4, "days").toDate().toISOString().split("T")[0]+"T"+time.endTime});
+            if (time.days.includes("F")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add(5, "days").toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add(5, "days").toDate().toISOString().split("T")[0]+"T"+time.endTime});
+            if (time.days.includes("S")) {
+                weekend = true;
+                courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add(6, "days").toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add(6, "days").toDate().toISOString().split("T")[0]+"T"+time.endTime});
+            }
+            if (time.days.includes("U")) {
+                weekend = true;
+                courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days").toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add("days").toDate().toISOString().split("T")[0]+"T"+time.endTime});
+            }
+        });
+    });
+
+    //another loop because it may not bring other courses to the others tab
+    selectedCourses.forEach((course: Course) => {
+        times.filter((time: Time) => time.crn == course.crn).forEach((time: Time) => {
             if ((time.startTime == "00:00" && time.endTime == "00:01") || time.startTime == "TBA" || time.startTime == "TBA") {
-                courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days",  6).toDate().toISOString().split("T")[0]+"T"+NAStartTime.toString().padStart(2, "0")+":00"});
+                courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add(weekend ? 7 : 6, "days").toDate().toISOString().split("T")[0]+"T"+NAStartTime.toString().padStart(2, "0")+":00"});
                 NAStartTime++;
-            } else {
-                if (time.days.includes("M")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days",  1).toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add("days",  1).toDate().toISOString().split("T")[0]+"T"+time.endTime});
-                if (time.days.includes("T")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days",  2).toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add("days",  2).toDate().toISOString().split("T")[0]+"T"+time.endTime});
-                if (time.days.includes("W")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days",  3).toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add("days",  3).toDate().toISOString().split("T")[0]+"T"+time.endTime});
-                if (time.days.includes("R")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days",  4).toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add("days",  4).toDate().toISOString().split("T")[0]+"T"+time.endTime});
-                if (time.days.includes("F")) courseTimes.push({title: `${course.id}-${course.section} - ${time.location}`, start: moment().startOf("week").add("days",  5).toDate().toISOString().split("T")[0]+"T"+time.startTime, end: moment().startOf("week").add("days",  5).toDate().toISOString().split("T")[0]+"T"+time.endTime});
             }
         });
     });
@@ -67,9 +91,10 @@ export default function Schedule() {
     
     return (
         <div>
-            <FullCalendar plugins={[timeGridPlugin]} headerToolbar={{left: "", center: "", right: ""}} allDaySlot={false} hiddenDays={[0]} nowIndicator={false}
-            expandRows={true} events={courseTimes} height="auto" dayHeaderFormat={{ weekday: "long" }} dayHeaderContent={(arg) => arg.text == "Saturday" ? "Others" : arg.text} 
-            slotDuration={max-min > 12 ? "00:30:00" : "00:15:00"} slotMinTime={`${startTimes.length == 0 ? 9 : min}:00`} slotMaxTime={`${Math.max((endTimes.length == 0 ? 17 : max), (startTimes.length == 0 ? 9 : min)+NACourses)}:00`} />
+            <FullCalendar plugins={[timeGridPlugin]} headerToolbar={{left: "", center: "", right: ""}} allDaySlot={false} nowIndicator={false}
+            expandRows={true} events={courseTimes} height="auto" dayHeaderFormat={{ weekday: "long" }} dayHeaderContent={(arg) => {console.log(arg.text); return dayOfWeekName(arg.text);}} 
+            slotDuration={max-min > 12 ? "00:30:00" : "00:15:00"} slotMinTime={`${startTimes.length == 0 ? 9 : min}:00`} slotMaxTime={`${Math.max((endTimes.length == 0 ? 17 : max), (startTimes.length == 0 ? 9 : min)+NACourses)}:00`} 
+            initialView="timeGrid" visibleRange={{start: moment().startOf("week").add(weekend ? 0 : 1, "days").format("YYYY-MM-DD"), end: moment().endOf("week").add(weekend ? 2 : 1, "days").format("YYYY-MM-DD")}}/>
             {overlapping && <div className="p-3 my-2 bg-warning text-dark rounded">Warning: You have overlapping courses.</div>}
             {credits > 15 && <div className="p-3 my-2 bg-warning text-dark rounded">Warning: Without explicit permission, MUN does not allow registration for more than 15 credit hours.</div>}
             <Accordion className="mt-2" defaultActiveKey="overview">
