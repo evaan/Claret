@@ -3,7 +3,7 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import SubjectAccordion from "./components/SubjectAccordion";
-import { coursesAtom, filterAtom, seatingAtom, selectedTabAtom, subjectsAtom, timesAtom } from "./api/atoms";
+import { coursesAtom, filterAtom, seatingAtom, selectedCoursesAtom, selectedTabAtom, subjectsAtom, timesAtom } from "./api/atoms";
 import { useAtom } from "jotai";
 import { Course, Seating, Subject, Time } from "./api/types";
 import Schedule from "./components/Schedule";
@@ -15,6 +15,7 @@ export default function App() {
     const [, setSeating] = useAtom(seatingAtom);
     const [filters, setFilters] = useAtom(filterAtom);
     const [selectedTab, setSelectedTab] = useAtom(selectedTabAtom);
+    const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
 
     React.useEffect(() => {
         fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/all").then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[]}) => {
@@ -22,6 +23,14 @@ export default function App() {
             setCourses(data.courses);
             setTimes(data.times);
             setSeating(data.seatings);
+            const crnsParam = new URLSearchParams(window.location.search).get("crns")?.split(",");
+            const newCourses: Course[] = [];
+            if (crnsParam !== undefined) {
+                data.courses.forEach((course: Course) => {
+                    if (crnsParam.includes(course.crn) && !selectedCourses.includes(course)) newCourses.push(course);
+                });
+            }
+            setSelectedCourses(selectedCourses.concat(newCourses));
         });
     }, []);
 

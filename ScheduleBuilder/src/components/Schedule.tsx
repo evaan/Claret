@@ -89,10 +89,22 @@ export default function Schedule() {
         }
     }
     
+    const [isCopied, setIsCopied] = React.useState(false);
+
+    const copySharingURL = () => {
+        let sharingURL = "https://claretformun.com?crns=";
+        selectedCourses.forEach((course: Course) => {
+            sharingURL += course.crn + ",";
+        });
+        navigator.clipboard.writeText(sharingURL.slice(0, -1));
+        setIsCopied(true);
+        setTimeout(() => {setIsCopied(false);}, 1000);
+    }
+
     return (
         <div>
             <FullCalendar plugins={[timeGridPlugin]} headerToolbar={{left: "", center: "", right: ""}} allDaySlot={false} nowIndicator={false}
-            expandRows={true} events={courseTimes} height="auto" dayHeaderFormat={{ weekday: "long" }} dayHeaderContent={(arg) => {console.log(arg.text); return dayOfWeekName(arg.text);}} 
+            expandRows={true} events={courseTimes} height="auto" dayHeaderFormat={{ weekday: "long" }} dayHeaderContent={(arg) => {return dayOfWeekName(arg.text);}} 
             slotDuration={max-min > 12 ? "00:30:00" : "00:15:00"} slotMinTime={`${startTimes.length == 0 ? 9 : min}:00`} slotMaxTime={`${Math.max((endTimes.length == 0 ? 17 : max), (startTimes.length == 0 ? 9 : min)+NACourses)}:00`} 
             initialView="timeGrid" visibleRange={{start: moment().startOf("week").add(weekend ? 0 : 1, "days").format("YYYY-MM-DD"), end: moment().endOf("week").add(weekend ? 2 : 1, "days").format("YYYY-MM-DD")}}/>
             {overlapping && <div className="p-3 my-2 bg-warning text-dark rounded">Warning: You have overlapping courses.</div>}
@@ -109,10 +121,18 @@ export default function Schedule() {
                                 <Button variant="text" style={{paddingLeft: "8px", paddingRight: "8px", paddingTop: "4px", paddingBottom: "4px"}} onClick={() => setSelectedCourses(selectedCourses.filter((course1: Course) => course1 !== course))}>&#10006;</Button>
                             </div>
                         ))}
+                    </Accordion.Body>
+                </Accordion.Item>
+                <Accordion.Item eventKey="sharing">
+                    <Accordion.Header>Sharing/Exporting</Accordion.Header>
+                    <Accordion.Body>
                         <Button className="mt-3 w-100" onClick={() => setModalOpen(true)} disabled={selectedCourses.length == 0}>
-                            {selectedCourses.length == 0 ? "Subscribe to Calendar (More than one course required)" : "Subscribe to Calendar"}
+                            {selectedCourses.length == 0 ? "Subscribe to Calendar (No courses selected)" : "Subscribe to Calendar"}
                         </Button>
                         <ICalModal isOpen={modalOpen} onHide={closeModal}/>
+                        <Button className="mt-2 w-100" onClick={copySharingURL} disabled={selectedCourses.length == 0}>
+                        {selectedCourses.length == 0 ? "Copy Claret link to clipboard (No courses selected)" : isCopied ? "Copied!" : "Copy Claret link to clipboard"}
+                        </Button>
                     </Accordion.Body>
                 </Accordion.Item>
             </Accordion>
