@@ -7,10 +7,11 @@ import { coursesAtom, filterAtom, seatingAtom, selectedCoursesAtom, selectedTabA
 import { useAtom } from "jotai";
 import { Course, Seating, Subject, Time } from "./api/types";
 import Schedule from "./components/Schedule";
+import { shouldShow } from "./api/functions";
 
 export default function App() {
     const [subjects, setSubjects] = useAtom(subjectsAtom);
-    const [, setCourses] = useAtom(coursesAtom);
+    const [courses, setCourses] = useAtom(coursesAtom);
     const [, setTimes] = useAtom(timesAtom);
     const [, setSeating] = useAtom(seatingAtom);
     const [filters, setFilters] = useAtom(filterAtom);
@@ -61,9 +62,9 @@ export default function App() {
                             setSelectedTab([event, "-1"]);
                         }, 500);
                     }}>
-                        {subjects.map((subject, index) => (
-                            <SubjectAccordion subject={subject} index={index} key={index} /> 
-                        ))}
+                        {subjects.map((subject, index) => {
+                            if (courses.filter((course: Course) => course.subject == subject.name && shouldShow(course, filters)).length > 0) return (<SubjectAccordion subject={subject} index={index} key={index} />);
+                        })}
                     </Accordion>
                 </Col>
             </Row>
