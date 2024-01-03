@@ -99,7 +99,7 @@ export default function Schedule() {
         navigator.clipboard.writeText(sharingURL.slice(0, -1));
         setIsCopied(true);
         setTimeout(() => {setIsCopied(false);}, 1000);
-    }
+    };
 
     return (
         <div>
