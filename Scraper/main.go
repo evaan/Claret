@@ -210,13 +210,18 @@ func processCourse(title []string, body []string, semester int, medical bool) {
 			times := body[timeStartLine+8:]
 
 			for i := 0; i <= len(times)/7-1; i++ {
+				location := times[3+(i*7)]
+				for from, to := range replaceMap {
+					strings.Replace(location, from, to, 1)
+				}
+
 				if times[1+(i*7)] == "TBA" {
 					db.Save(&CourseTime{
 						CourseCRN: title[len(title)-3],
 						StartTime: "TBA",
 						EndTime:   "TBA",
 						Days:      times[2+(i*7)],
-						Location:  times[3+(i*7)],
+						Location:  location,
 					})
 				} else {
 					db.Save(&CourseTime{
@@ -224,7 +229,7 @@ func processCourse(title []string, body []string, semester int, medical bool) {
 						StartTime: parseTime(strings.Split(times[1+(i*7)], " - ")[0]),
 						EndTime:   Ternary(times[1+(i*7)] == "TBA", "TBA", parseTime(strings.Split(times[1+(i*7)], " - ")[1])),
 						Days:      times[2+(i*7)],
-						Location:  times[3+(i*7)],
+						Location:  location,
 					})
 				}
 			}
@@ -392,8 +397,8 @@ func main() {
 	removeNonExistingCourses()
 
 	c := cron.New()
-	c.AddFunc("30 4 * * 1", func() { scrape() })
-	c.AddFunc("30 6 * * 1", func() { removeNonExistingCourses() })
+	c.AddFunc("0 30 4 * * 1", func() { scrape() })
+	c.AddFunc("0 30 6 * * 1", func() { removeNonExistingCourses() })
 	c.Start()
 
 	select {}
