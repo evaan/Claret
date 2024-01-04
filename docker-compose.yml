@@ -83,7 +83,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DB_URL: "postgresql://postgres:admin@172.12.0.4:5432/claret"
+      DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
       PORT: 8000
       TZ: America/St_Johns
       BANNER_TZ: America/St_Johns

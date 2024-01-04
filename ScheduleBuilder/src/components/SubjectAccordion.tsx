@@ -13,6 +13,8 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
     const uniqueCourses: [string, string][] = [];
     const [selectedTab] = useAtom(selectedTabAtom);
 
+    const sortingOrder: {[name: string]: number} = {"Lecture": 1, "Laboratory": 2, "World Wide Web": 3};
+
     subjectCourses.forEach((course: Course) => {
         if(!JSON.stringify(uniqueCourses).includes(course.id)) uniqueCourses.push([course.id, course.name]);
     });
@@ -32,7 +34,7 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
                                     {course[0]} - {course[1]}
                                 </Accordion.Header>
                                 <Accordion.Body>
-                                    {courses.filter((section: Course) => course[0] === section.id && shouldShow(section, filters)).map((section: Course) => (
+                                    {courses.filter((section: Course) => course[0] === section.id && shouldShow(section, filters)).sort(function(a, b) {return (sortingOrder[a.type] || 0) - (sortingOrder[b.type] || 0);}).map((section: Course) => (
                                         <SectionButton section={section} key={section.crn} />
                                     ))}
                                 </Accordion.Body>
