@@ -61,7 +61,7 @@ services:
 
   claretscraper:
     container_name: claretScraper
-    #restart: always
+    restart: always
     build:
       context: .
       dockerfile: Scraper.Dockerfile
@@ -74,7 +74,7 @@ services:
 
   icsserver:
     container_name: icsServer
-    #restart: always
+    restart: always
     build:
       context: .
       dockerfile: ICSServer.Dockerfile
