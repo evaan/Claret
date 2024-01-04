@@ -33,6 +33,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                 <p><strong>CRN:</strong> {props.section.crn}</p>
                 <p><strong>Credit Hours:</strong> {props.section.credits}</p>
                 <p><strong>Section:</strong> {props.section.section}</p>
+                <p><strong>Level:</strong> {props.section.level}</p>
                 <p><strong>Campus:</strong> {props.section.campus}</p>
                 <p><strong>Type:</strong> {props.section.type !== null ? props.section.type : "Unknown"}</p>
                 <p><strong>Date Range:</strong> {props.section.dateRange !== null ? props.section.dateRange : "Unknown"}</p>

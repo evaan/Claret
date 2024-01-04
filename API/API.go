@@ -37,6 +37,7 @@ type Course struct {
 	Comment    any    `json:"comment"`
 	Credits    int    `json:"credits"`
 	Semester   int    `json:"semester"`
+	Level      string `json:"level"`
 }
 
 type Time struct {
@@ -84,7 +85,7 @@ func all(w http.ResponseWriter, r *http.Request) {
 	for courses.Next() {
 		var course Course
 
-		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.Campus, &course.Comment, &course.Credits, &course.Semester)
+		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.Campus, &course.Comment, &course.Credits, &course.Semester, &course.Level)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -178,7 +179,7 @@ func courses(w http.ResponseWriter, r *http.Request) {
 	for courses.Next() {
 		var course Course
 
-		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.Campus, &course.Comment, &course.Credits, &course.Semester)
+		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.Campus, &course.Comment, &course.Credits, &course.Semester, &course.Level)
 		if err != nil {
 			logger.Fatal(err)
 		}
