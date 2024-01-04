@@ -2,7 +2,6 @@
   "name": "claret",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://127.0.0.1:8080",
   "dependencies": {
     "@fontsource/sen": "^5.0.17",
     "@fortawesome/free-brands-svg-icons": "^6.5.1",

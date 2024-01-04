@@ -119,7 +119,7 @@ func processSemester(semester int, medical bool) []Subject {
 	c.OnHTML("select[name=sel_subj]", func(e *colly.HTMLElement) {
 		e.DOM.Find("option").EachWithBreak(func(i int, s *goquery.Selection) bool {
 			if s.Text() != "All" {
-				subjects = append(subjects, Subject{Name: first(s.Attr("value")) + Ternary(medical, "1", ""), FriendlyName: s.Text()})
+				subjects = append(subjects, Subject{Name: first(s.Attr("value")) + Ternary(medical, "1", ""), FriendlyName: s.Text() + Ternary(medical, " (Medical)", "")})
 			}
 			return true
 		})

@@ -62,7 +62,7 @@ export default function App() {
                             setSelectedTab([event, "-1"]);
                         }, 500);
                     }}>
-                        {subjects.map((subject, index) => {
+                        {subjects.sort(function(a, b) {if (a.friendlyName < b.friendlyName) return -1; else return 1; return 0;}).map((subject, index) => {
                             if (courses.filter((course: Course) => course.subject == subject.name && shouldShow(course, filters)).length > 0) return (<SubjectAccordion subject={subject} index={index} key={index} />);
                         })}
                     </Accordion>
