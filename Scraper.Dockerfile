@@ -1,8 +1,8 @@
-FROM alpine:latest
-COPY Scraper /app/Scraper
-RUN apk add --no-cache supercronic python3 py3-pip py3-virtualenv tzdata
-RUN python3 -m venv /app/venv
-ENV PATH="/app/venv/bin:$PATH"
-RUN pip install -r /app/Scraper/requirements.txt
-RUN echo "30 3 * * 1 python3 /app/Scraper/Scraper.py" > ./crontab
-CMD python3 /app/Scraper/Scraper.py; supercronic -debug ./crontab
+FROM golang:alpine AS build-stage
+WORKDIR /app
+COPY ./Scraper /app
+RUN CGO_ENABLED=0 GOOS=linux go build -o /scraper
+FROM gcr.io/distroless/base-debian11:latest
+COPY --from=build-stage /scraper /scraper
+USER nonroot:nonroot
+ENTRYPOINT [ "/scraper" ]
