@@ -212,8 +212,9 @@ func processCourse(title []string, body []string, semester int, medical bool) {
 			for i := 0; i <= len(times)/7-1; i++ {
 				location := times[3+(i*7)]
 				for from, to := range replaceMap {
-					strings.Replace(location, from, to, 1)
+					location = strings.Replace(location, from, to, 1)
 				}
+				logger.Println(location)
 
 				if times[1+(i*7)] == "TBA" {
 					db.Save(&CourseTime{
