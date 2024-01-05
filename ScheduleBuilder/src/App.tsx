@@ -40,9 +40,6 @@ export default function App() {
             <Row style={{marginLeft: "2.5%", marginRight: "2.5%"}}>
                 <Col xs={12} md={8} className="order-md-2">
                     <h1 className="text-center">Schedule</h1>
-                    <div style={{display: "flex", justifyContent: "center"}}>
-                        {/* TODO: import/export buttons */}
-                    </div>
                     <Schedule />
                 </Col>
                 <Col xs={12} md={4} className="order-md-1">
@@ -59,7 +56,7 @@ export default function App() {
                         //jank solution but it reduces the amount of lag the site has SIGNIFICANTLY
                         setSelectedTab([event, selectedTab[0]]);
                         setTimeout(() => {
-                            setSelectedTab([event, "-1"]);
+                            if (event !== null) setSelectedTab([event, "-1"]);
                         }, 500);
                     }}>
                         {subjects.sort(function(a, b) {if (a.friendlyName < b.friendlyName) return -1; else return 1; return 0;}).map((subject, index) => {

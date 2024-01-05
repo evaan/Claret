@@ -34,7 +34,7 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
                                     {course[0]} - {course[1]}
                                 </Accordion.Header>
                                 <Accordion.Body>
-                                    {courses.filter((section: Course) => course[0] === section.id && shouldShow(section, filters)).sort(function(a, b) {return (sortingOrder[a.type] || 0) - (sortingOrder[b.type] || 0);}).map((section: Course) => (
+                                    {courses.filter((section: Course) => course[0] === section.id && shouldShow(section, filters)).sort(function(a, b) {return (sortingOrder[a.type] ?? 0) - (sortingOrder[b.type] ?? 0);}).map((section: Course) => (
                                         <SectionButton section={section} key={section.crn} />
                                     ))}
                                 </Accordion.Body>
