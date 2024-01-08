@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -291,6 +293,7 @@ func processSubject(subject string, semester int, course string, medical bool) {
 
 func scrape() {
 	startTime := time.Now()
+	existingCourses = nil
 
 	logger.Println("⭐ Scraping Started!")
 	latestSemester := getLatestSemester(false)
@@ -314,9 +317,25 @@ func scrape() {
 	db.Not("semester = ? OR semester = ?", latestSemester, latestMedSemester).Delete(&Semester{})
 
 	scrapingTime := time.Since(startTime)
-	output := fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds()))
+	output := fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds())%60)
+
+	if os.Getenv("WEBHOOK_URL") != "" {
+		params := fmt.Sprintf(`{"username":"Claret Scraper","embeds":[{"author":{"name":"Claret Scraper Report","url":"https://claretformun.com"},"timestamp":"%s","color":65280,"fields":[{"name":"Scraping Time","value":"%s"},{"name":"Courses Scraped","value":"%d"}]}]}`, time.Now().Format(time.RFC3339), output, len(existingCourses))
+		r, err := http.NewRequest("POST", os.Getenv("WEBHOOK_URL"), bytes.NewBuffer([]byte(params)))
+		if err != nil {
+			panic(err)
+		}
+		r.Header.Add("Content-Type", "application/json")
+		client := &http.Client{}
+		res, err := client.Do(r)
+		if err != nil {
+			panic(err)
+		}
+		defer res.Body.Close()
+	}
 
 	logger.Println("✅ Scrape Complete in " + output + "!")
+	logger.Printf("Courses scraped: %d", len(existingCourses))
 }
 
 func removeNonExistingCourses() {
