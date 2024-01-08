@@ -9,6 +9,7 @@ services:
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      - "--providers.docker.exposedbydefault=false"
     ports:
       - 80:80
       - 443:443
@@ -71,8 +72,6 @@ services:
       DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
       WEBHOOK_URL: ""
       TZ: America/St_Johns
-    labels:
-      - traefik.enable=false
 
   icsserver:
     container_name: icsServer
