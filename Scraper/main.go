@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -289,6 +290,8 @@ func processSubject(subject string, semester int, course string, medical bool) {
 }
 
 func scrape() {
+	startTime := time.Now()
+
 	logger.Println("⭐ Scraping Started!")
 	latestSemester := getLatestSemester(false)
 	latestMedSemester := getLatestSemester(true)
@@ -309,7 +312,11 @@ func scrape() {
 
 	// delete older semesters
 	db.Not("semester = ? OR semester = ?", latestSemester, latestMedSemester).Delete(&Semester{})
-	logger.Println("✅ Scrape Complete!")
+
+	scrapingTime := time.Since(startTime)
+	output := fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds()))
+
+	logger.Println("✅ Scrape Complete in " + output + "!")
 }
 
 func removeNonExistingCourses() {
