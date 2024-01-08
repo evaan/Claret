@@ -69,7 +69,7 @@ services:
       - postgres
     environment:
       DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
-      PORT: 8080
+      WEBHOOK_URL: ""
       TZ: America/St_Johns
 
   icsserver:
