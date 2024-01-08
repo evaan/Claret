@@ -71,6 +71,8 @@ services:
       DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
       WEBHOOK_URL: ""
       TZ: America/St_Johns
+    labels:
+      - traefik.enable=false
 
   icsserver:
     container_name: icsServer
