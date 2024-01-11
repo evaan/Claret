@@ -70,7 +70,7 @@ services:
       - postgres
     environment:
       DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
-      WEBHOOK_URL: ""
+      WEBHOOK_URL: ${WEBHOOK_URL}
       TZ: America/St_Johns
 
   icsserver:
