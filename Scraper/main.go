@@ -37,6 +37,7 @@ type Course struct {
 	Type             *string
 	Instructor       *string
 	SubjectName      string  `gorm:"column:subject;not null"`
+	FullSubject      string  `gorm:"column:subjectFull;not null"`
 	Subject          Subject `gorm:"constraint:OnDelete:CASCADE;"`
 	Campus           string  `gorm:"not null"`
 	Comment          *string
@@ -138,7 +139,7 @@ func processSemester(semester int, medical bool) []Subject {
 	return subjects
 }
 
-func processCourse(title []string, body []string, semester int, medical bool) {
+func processCourse(title []string, body []string, semester int, subject string, medical bool) {
 	var campus string
 	var credits int
 	var comment *string
@@ -185,6 +186,7 @@ func processCourse(title []string, body []string, semester int, medical bool) {
 			Type:             &body[len(body)-2],
 			Instructor:       &instructor,
 			SubjectName:      strings.Split(title[len(title)-2], " ")[0] + Ternary(medical, "1", ""),
+			FullSubject:      subject,
 			Campus:           campus,
 			Comment:          comment,
 			Credits:          credits,
@@ -198,6 +200,7 @@ func processCourse(title []string, body []string, semester int, medical bool) {
 			CRN:              title[len(title)-3],
 			Section:          title[len(title)-1],
 			SubjectName:      strings.Split(title[len(title)-2], " ")[0] + Ternary(medical, "1", ""),
+			FullSubject:      subject,
 			Campus:           campus,
 			Comment:          comment,
 			Credits:          credits,
@@ -256,7 +259,7 @@ func processCourse(title []string, body []string, semester int, medical bool) {
 	db.Save(&Seating{Crn: title[len(title)-3], Available: 0, Max: 0, Waitlist: 0, Checked: "Never"})
 }
 
-func processSubject(subject string, semester int, course string, medical bool) {
+func processSubject(subject Subject, semester int, course string, medical bool) {
 	c := colly.NewCollector()
 
 	var courses []*goquery.Selection
@@ -265,7 +268,7 @@ func processSubject(subject string, semester int, course string, medical bool) {
 		courses = append(courses, e.DOM)
 	})
 
-	params := []byte("term_in=" + strconv.Itoa(semester) + "&sel_subj=dummy&sel_day=dummy&sel_schd=dummy&sel_insm=dummy&sel_camp=dummy&sel_levl=dummy&sel_sess=dummy&sel_instr=dummy&sel_ptrm=dummy&sel_attr=dummy&sel_subj=" + subject + "&sel_crse=" + course + "&sel_title=&sel_schd=%25&sel_insm=%25&sel_from_cred=&sel_to_cred=&sel_camp=%25&sel_levl=%25&sel_ptrm=%25&sel_instr=%25&sel_sess=%25&sel_attr=%25&begin_hh=0&begin_mi=0&begin_ap=a&end_hh=0&end_mi=0&end_ap=a")
+	params := []byte("term_in=" + strconv.Itoa(semester) + "&sel_subj=dummy&sel_day=dummy&sel_schd=dummy&sel_insm=dummy&sel_camp=dummy&sel_levl=dummy&sel_sess=dummy&sel_instr=dummy&sel_ptrm=dummy&sel_attr=dummy&sel_subj=" + subject.Name + "&sel_crse=" + course + "&sel_title=&sel_schd=%25&sel_insm=%25&sel_from_cred=&sel_to_cred=&sel_camp=%25&sel_levl=%25&sel_ptrm=%25&sel_instr=%25&sel_sess=%25&sel_attr=%25&begin_hh=0&begin_mi=0&begin_ap=a&end_hh=0&end_mi=0&end_ap=a")
 	err := c.PostRaw("https://selfservice.mun.ca/direct/bwckschd.p_get_crse_unsec", params)
 	if err != nil {
 		logger.Fatal(err)
@@ -287,7 +290,7 @@ func processSubject(subject string, semester int, course string, medical bool) {
 				body = append(body, line)
 			}
 		}
-		processCourse(strings.Split(course.Text(), " - "), body, semester, medical)
+		processCourse(strings.Split(course.Text(), " - "), body, semester, subject.FriendlyName, medical)
 	}
 }
 
@@ -305,12 +308,13 @@ func scrape() {
 	for _, subject := range processSemester(latestSemester, false) {
 		db.Save(subject)
 		logger.Println("📝 Processing " + subject.FriendlyName + " (" + subject.Name + ")")
-		processSubject(subject.Name, latestSemester, "", false)
+		processSubject(subject, latestSemester, "", false)
 	}
 	for _, subject := range processSemester(latestMedSemester, true) {
 		db.Save(&subject)
+		subject.Name = strings.TrimSuffix(subject.Name, "1")
 		logger.Println("📝 Processing " + subject.FriendlyName + " (" + subject.Name + ")")
-		processSubject(strings.TrimSuffix(subject.Name, "1"), latestMedSemester, "", true)
+		processSubject(subject, latestMedSemester, "", true)
 	}
 
 	// delete older semesters
@@ -320,6 +324,7 @@ func scrape() {
 	output := fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds())%60)
 
 	if os.Getenv("WEBHOOK_URL") != "" {
+		logger.Println("🔔 Sending message to Discord")
 		params := fmt.Sprintf(`{"username":"Claret Scraper","embeds":[{"author":{"name":"Claret Scraper Report","url":"https://claretformun.com"},"timestamp":"%s","color":65280,"fields":[{"name":"Scraping Time","value":"%s"},{"name":"Courses Scraped","value":"%d"}]}]}`, time.Now().Format(time.RFC3339), output, len(existingCourses))
 		r, err := http.NewRequest("POST", os.Getenv("WEBHOOK_URL"), bytes.NewBuffer([]byte(params)))
 		if err != nil {

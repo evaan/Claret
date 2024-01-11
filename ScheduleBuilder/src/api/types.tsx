@@ -11,6 +11,7 @@ export interface Course {
     dateRange: string;
     type: string;
     instructor: string;
+    subjectFull: string;
     subject: string;
     campus: string;
     comment: string;

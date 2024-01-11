@@ -9,3 +9,4 @@ export const seatingAtom = atom<Seating[]>([]);
 export const selectedCoursesAtom = atom<Course[]>([]);
 export const selectedTabAtom = atom<[AccordionEventKey, AccordionEventKey]>(["-1", "-1"]);
 export const filterAtom = atom<[boolean, boolean, boolean, boolean, boolean]>([true, false, false, true, false]);
+export const searchQueryAtom = atom<string>("");

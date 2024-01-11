@@ -25,19 +25,20 @@ type Subject struct {
 }
 
 type Course struct {
-	Crn        string `json:"crn"`
-	Id         string `json:"id"`
-	Name       string `json:"name"`
-	Section    string `json:"section"`
-	DateRange  any    `json:"dateRange"`
-	CourseType any    `json:"type"`
-	Instructor any    `json:"instructor"`
-	Subject    string `json:"subject"`
-	Campus     string `json:"campus"`
-	Comment    any    `json:"comment"`
-	Credits    int    `json:"credits"`
-	Semester   int    `json:"semester"`
-	Level      string `json:"level"`
+	Crn         string `json:"crn"`
+	Id          string `json:"id"`
+	Name        string `json:"name"`
+	Section     string `json:"section"`
+	DateRange   any    `json:"dateRange"`
+	CourseType  any    `json:"type"`
+	Instructor  any    `json:"instructor"`
+	SubjectFull string `json:"subjectFull"`
+	Subject     string `json:"subject"`
+	Campus      string `json:"campus"`
+	Comment     any    `json:"comment"`
+	Credits     int    `json:"credits"`
+	Semester    int    `json:"semester"`
+	Level       string `json:"level"`
 }
 
 type Time struct {
@@ -85,7 +86,7 @@ func all(w http.ResponseWriter, r *http.Request) {
 	for courses.Next() {
 		var course Course
 
-		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.Campus, &course.Comment, &course.Credits, &course.Semester, &course.Level)
+		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.SubjectFull, &course.Campus, &course.Comment, &course.Credits, &course.Semester, &course.Level)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -179,7 +180,7 @@ func courses(w http.ResponseWriter, r *http.Request) {
 	for courses.Next() {
 		var course Course
 
-		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.Campus, &course.Comment, &course.Credits, &course.Semester, &course.Level)
+		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.SubjectFull, &course.Campus, &course.Comment, &course.Credits, &course.Semester, &course.Level)
 		if err != nil {
 			logger.Fatal(err)
 		}

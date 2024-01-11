@@ -3,11 +3,12 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import SubjectAccordion from "./components/SubjectAccordion";
-import { coursesAtom, filterAtom, seatingAtom, selectedCoursesAtom, selectedTabAtom, subjectsAtom, timesAtom } from "./api/atoms";
+import { coursesAtom, filterAtom, searchQueryAtom, seatingAtom, selectedCoursesAtom, selectedTabAtom, subjectsAtom, timesAtom } from "./api/atoms";
 import { useAtom } from "jotai";
 import { Course, Seating, Subject, Time } from "./api/types";
 import Schedule from "./components/Schedule";
 import { shouldShow } from "./api/functions";
+import SearchBar from "./components/SearchBar";
 
 export default function App() {
     const [subjects, setSubjects] = useAtom(subjectsAtom);
@@ -17,6 +18,7 @@ export default function App() {
     const [filters, setFilters] = useAtom(filterAtom);
     const [selectedTab, setSelectedTab] = useAtom(selectedTabAtom);
     const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
+    const [searchQuery] = useAtom(searchQueryAtom);
 
     React.useEffect(() => {
         fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/all").then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[]}) => {
@@ -52,6 +54,7 @@ export default function App() {
                         <Form.Check inline type="switch" label="Online" defaultChecked={true} onChange={(event) => setFilters([filters[0], filters[1], filters[2], event.target.checked, filters[4]])} />
                         <Form.Check inline type="switch" label="Others" defaultChecked={false} onChange={(event) => setFilters([filters[0], filters[1], filters[2], filters[3], event.target.checked])} />
                     </div>
+                    <SearchBar />
                     <Accordion style={{overflowY: "auto"}} onSelect={(event) => {
                         //jank solution but it reduces the amount of lag the site has SIGNIFICANTLY
                         setSelectedTab([event, selectedTab[0]]);
@@ -59,8 +62,10 @@ export default function App() {
                             if (event !== null) setSelectedTab([event, "-1"]);
                         }, 500);
                     }}>
-                        {subjects.sort(function(a, b) {if (a.friendlyName < b.friendlyName) return -1; else return 1; return 0;}).map((subject, index) => {
-                            if (courses.filter((course: Course) => course.subject == subject.name && shouldShow(course, filters)).length > 0) return (<SubjectAccordion subject={subject} index={index} key={index} />);
+                        {subjects.sort(function(a, b) {if (a.friendlyName < b.friendlyName) return -1; else return 1;}).map((subject, index) => {
+                            if (courses.filter((course: Course) => course.subject == subject.name && shouldShow(course, filters) && (searchQuery == "" || course.id.toLowerCase().includes(searchQuery.toLowerCase()) || course.subjectFull.toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) {
+                                return (<SubjectAccordion subject={subject} index={index} key={index} />);
+                            }
                         })}
                     </Accordion>
                 </Col>
