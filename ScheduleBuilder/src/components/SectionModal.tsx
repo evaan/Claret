@@ -32,7 +32,9 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
     function removeCourse () {
         props.onHide();
         setSelectedCourses(selectedCourses.filter((course: Course) => course !== props.section));
-
+        let crns = new URLSearchParams(window.location.search).get("crns") ?? "";
+        crns = crns?.replace(props.section.crn + "," , "").replace(props.section.crn, "");
+        window.history.replaceState(null, "", `?crns=${crns}`);
     }
 
     return(
