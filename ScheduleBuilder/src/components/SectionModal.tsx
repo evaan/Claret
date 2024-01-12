@@ -20,6 +20,21 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
         return input;
     }
 
+    function addCourse() {
+        props.onHide();
+        setSelectedCourses([...selectedCourses, props.section]);
+        let crns = new URLSearchParams(window.location.search).get("crns");
+        if (crns != null) crns += "," + props.section.crn;
+        else crns = props.section.crn;
+        window.history.replaceState(null, "", `?crns=${crns}`);
+    }
+
+    function removeCourse () {
+        props.onHide();
+        setSelectedCourses(selectedCourses.filter((course: Course) => course !== props.section));
+
+    }
+
     return(
         <Modal show={props.isOpen} onHide={() => props.onHide()} centered>
             <ModalHeader>{props.section.id} - {props.section.name} (Section: {props.section.section})</ModalHeader>
@@ -67,9 +82,9 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
             <ModalFooter>
                 <Button variant="secondary" onClick={() => props.onHide()}>Close</Button>
                 {selectedCourses.includes(props.section) &&
-                <Button variant="danger" onClick={() => {props.onHide(); setSelectedCourses(selectedCourses.filter((course: Course) => course !== props.section));}}>Remove Course</Button>}
+                <Button variant="danger" onClick={removeCourse}>Remove Course</Button>}
                 {!selectedCourses.includes(props.section) &&
-                <Button variant="primary" onClick={() => {props.onHide(); setSelectedCourses([...selectedCourses, props.section]);}}>Add Course</Button>}
+                <Button variant="primary" onClick={addCourse}>Add Course</Button>}
             </ModalFooter>
         </Modal>
     );
