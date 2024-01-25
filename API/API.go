@@ -241,9 +241,13 @@ func seating(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: check if time has been more than 5 minutes
+
 	c := colly.NewCollector()
 
 	var cells []string
+
+	exists := true
 
 	c.OnHTML("caption", func(e *colly.HTMLElement) {
 		if e.Text == "Registration Availability" {
@@ -253,8 +257,18 @@ func seating(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 
+	c.OnHTML("span.errortext", func(e *colly.HTMLElement) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Course could not be found, double-check your CRN and try again."))
+		exists = false
+	})
+
 	c.Visit("https://selfservice.mun.ca/direct/bwckschd.p_disp_detail_sched?term_in=" + r.URL.Query().Get("semester") + "&crn_in=" + r.URL.Query().Get("crn"))
 	c.Wait()
+
+	if !exists {
+		return
+	}
 
 	var output []Seating
 	var seating Seating
@@ -276,6 +290,13 @@ func seating(w http.ResponseWriter, r *http.Request) {
 	seating.Checked = checkedTime
 
 	jsonString, err := json.Marshal(append(output, seating))
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	_, err = db.Exec(`UPDATE seatings
+	SET available = $2, max = $3, waitlist = $4, checked = $5
+	WHERE crn = $1;`, seating.Crn, seating.Available, seating.Max, seating.Waitlist, seating.Checked)
 	if err != nil {
 		logger.Fatal(err)
 	}
