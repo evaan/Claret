@@ -18,6 +18,7 @@ import (
 var db *sql.DB
 var logger *log.Logger
 var err error
+var loc *time.Location
 
 type Subject struct {
 	Name         string `json:"name"`
@@ -199,6 +200,8 @@ func courses(w http.ResponseWriter, r *http.Request) {
 }
 
 func times(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	var output []Time
 
 	if r.URL.Query().Get("crn") == "" {
@@ -229,58 +232,109 @@ func times(w http.ResponseWriter, r *http.Request) {
 		logger.Fatal(err)
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(course))
 }
 
 func seating(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	if r.URL.Query().Get("crn") == "" || r.URL.Query().Get("semester") == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("CRN or Semester was not provided, please add ?crn={crn}&semester={semester} in your URL."))
 		return
 	}
 
-	c := colly.NewCollector()
+	var checked string
+	var jsonString []byte
 
-	var cells []string
+	exists := true
 
-	c.OnHTML("caption", func(e *colly.HTMLElement) {
-		if e.Text == "Registration Availability" {
-			e.DOM.Parent().Find("td.dddefault").Each(func(i int, s *goquery.Selection) {
-				cells = append(cells, s.Text())
+	err := db.QueryRow("SELECT seatings.checked FROM seatings WHERE seatings.crn = $1", r.URL.Query().Get("crn")).Scan(&checked)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Course could not be found, double-check your CRN and try again."))
+		return
+	}
+
+	time1, err := time.ParseInLocation("2006-01-02T15:04", checked, loc)
+	if err != nil {
+		time1 = time.Now().Add(time.Duration(-6) * time.Minute)
+	}
+
+	if !time1.After(time.Now().Add(-5 * time.Minute)) {
+		c := colly.NewCollector()
+
+		var cells []string
+
+		if exists {
+			c.OnHTML("caption", func(e *colly.HTMLElement) {
+				if e.Text == "Registration Availability" {
+					e.DOM.Parent().Find("td.dddefault").Each(func(i int, s *goquery.Selection) {
+						cells = append(cells, s.Text())
+					})
+				}
 			})
+
+			c.OnHTML("span.errortext", func(e *colly.HTMLElement) {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Course could not be found, double-check your CRN and try again."))
+				exists = false
+			})
+
+			c.Visit("https://selfservice.mun.ca/direct/bwckschd.p_disp_detail_sched?term_in=" + r.URL.Query().Get("semester") + "&crn_in=" + r.URL.Query().Get("crn"))
+			c.Wait()
+
+			if !exists {
+				return
+			}
+
+			var output []Seating
+			var seating Seating
+
+			seating.Crn = r.URL.Query().Get("crn")
+			if len(cells) != 0 {
+				seating.Available = cells[2]
+				seating.Max = cells[0]
+				if len(cells) >= 6 {
+					seating.Waitlist = cells[4]
+				} else {
+					seating.Waitlist = nil
+				}
+			}
+			checkedTime, err := strftime.Format("%Y-%m-%dT%H:%M", time.Now())
+			if err != nil {
+				logger.Fatal(err)
+			}
+			seating.Checked = checkedTime
+
+			jsonString, err = json.Marshal(append(output, seating))
+			if err != nil {
+				logger.Fatal(err)
+			}
+
+			_, err = db.Exec(`UPDATE seatings
+			SET available = $2, max = $3, waitlist = $4, checked = $5
+			WHERE crn = $1;`, seating.Crn, seating.Available, seating.Max, seating.Waitlist, seating.Checked)
+			if err != nil {
+				logger.Fatal(err)
+			}
 		}
-	})
+	} else {
+		var seating Seating
+		var output []Seating
 
-	c.Visit("https://selfservice.mun.ca/direct/bwckschd.p_disp_detail_sched?term_in=" + r.URL.Query().Get("semester") + "&crn_in=" + r.URL.Query().Get("crn"))
-	c.Wait()
+		err := db.QueryRow("SELECT * FROM seatings WHERE seatings.crn = $1", r.URL.Query().Get("crn")).Scan(&seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked)
+		if err != nil {
+			logger.Fatal(err)
+		}
 
-	var output []Seating
-	var seating Seating
-
-	seating.Crn = r.URL.Query().Get("crn")
-	if len(cells) != 0 {
-		seating.Available = cells[2]
-		seating.Max = cells[0]
-		if len(cells) >= 6 {
-			seating.Waitlist = cells[4]
-		} else {
-			seating.Waitlist = nil
+		jsonString, err = json.Marshal(append(output, seating))
+		if err != nil {
+			logger.Fatal(err)
 		}
 	}
-	checkedTime, err := strftime.Format("%Y-%m-%dT%H:%M", time.Now())
-	if err != nil {
-		logger.Fatal(err)
-	}
-	seating.Checked = checkedTime
 
-	jsonString, err := json.Marshal(append(output, seating))
-	if err != nil {
-		logger.Fatal(err)
-	}
-
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonString))
 }
@@ -310,6 +364,11 @@ func main() {
 		logger.Fatal(err)
 	}
 	logger.Println("💿 Connected to Database!")
+
+	loc, err = time.LoadLocation("America/St_Johns")
+	if err != nil {
+		logger.Fatal(err)
+	}
 
 	http.HandleFunc("/all", all)
 	http.HandleFunc("/subjects", subjects)
