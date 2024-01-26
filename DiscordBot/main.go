@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
@@ -18,13 +19,13 @@ var err error
 var (
 	commands = []*discordgo.ApplicationCommand{
 		{
-			Name:        "test-command",
-			Description: "Test command",
+			Name:        "seatings",
+			Description: "Get the seating of a specified course using the Course Registration Number.",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Type:        discordgo.ApplicationCommandOptionString,
 					Name:        "string",
-					Description: "String Option",
+					Description: "Course Registration Number",
 					Required:    true,
 				},
 			},
@@ -32,11 +33,32 @@ var (
 	}
 
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
-		"test-command": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		"seatings": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: "it works yippee!",
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							Author: &discordgo.MessageEmbedAuthor{},
+							Color:  0x7f1734,
+							Fields: []*discordgo.MessageEmbedField{
+								{
+									Name:  "Total Seats",
+									Value: "100",
+								},
+								{
+									Name:  "Available Seats",
+									Value: "23",
+								},
+								{
+									Name:  "Waitlist",
+									Value: "0",
+								},
+							},
+							Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+							Title:     "Available seats for ",          //TODO: course hree
+						},
+					},
 				},
 			})
 		},
@@ -88,7 +110,7 @@ func main() {
 	for i, v := range commands {
 		cmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, GUILD_ID, v)
 		if err != nil {
-			logger.Fatalf("EMOJI HERE FUCK YOU Cannot create command '%v': %v", v.Name, err)
+			logger.Fatalf("❌ Cannot create command '%v': %v", v.Name, err)
 		}
 		registeredCommands[i] = cmd
 	}
