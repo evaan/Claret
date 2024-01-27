@@ -239,18 +239,26 @@ func times(w http.ResponseWriter, r *http.Request) {
 func seating(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	if r.URL.Query().Get("crn") == "" || r.URL.Query().Get("semester") == "" {
+	if r.URL.Query().Get("crn") == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("CRN or Semester was not provided, please add ?crn={crn}&semester={semester} in your URL."))
+		w.Write([]byte("CRN or Semester was not provided, please add ?crn={crn} in your URL."))
 		return
 	}
 
 	var checked string
 	var jsonString []byte
 
+	var semester string
+	err := db.QueryRow("SELECT courses.semester FROM courses WHERE courses.crn = $1", r.URL.Query().Get("crn")).Scan(&semester)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Course could not be found, double-check your CRN and try again."))
+		return
+	}
+
 	exists := true
 
-	err := db.QueryRow("SELECT seatings.checked FROM seatings WHERE seatings.crn = $1", r.URL.Query().Get("crn")).Scan(&checked)
+	err = db.QueryRow("SELECT seatings.checked FROM seatings WHERE seatings.crn = $1", r.URL.Query().Get("crn")).Scan(&checked)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Course could not be found, double-check your CRN and try again."))
@@ -282,7 +290,7 @@ func seating(w http.ResponseWriter, r *http.Request) {
 				exists = false
 			})
 
-			c.Visit("https://selfservice.mun.ca/direct/bwckschd.p_disp_detail_sched?term_in=" + r.URL.Query().Get("semester") + "&crn_in=" + r.URL.Query().Get("crn"))
+			c.Visit("https://selfservice.mun.ca/direct/bwckschd.p_disp_detail_sched?term_in=" + semester + "&crn_in=" + r.URL.Query().Get("crn"))
 			c.Wait()
 
 			if !exists {
