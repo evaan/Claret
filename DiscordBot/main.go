@@ -230,13 +230,6 @@ var (
 			})
 		},
 		"searchcourses": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Please wait...",
-				},
-			})
-
 			var embed *discordgo.MessageEmbed
 			var fields []*discordgo.MessageEmbedField
 
@@ -245,31 +238,26 @@ var (
 				embed = errorEmbed(err.Error())
 			} else {
 				for courses.Next() {
-					logger.Println("still exists?")
-
 					var course Course
 					courses.Scan(&course.Id, &course.Section, &course.Name, &course.Crn, &course.Instructor)
 					fields = append(fields, &discordgo.MessageEmbedField{
 						Name:  fmt.Sprintf("%s-%s - %s (%s)", course.Id, course.Section, course.Name, course.Crn),
 						Value: fmt.Sprintf("Instructor(s): %v", course.Instructor),
 					})
-
-					embed = &discordgo.MessageEmbed{
-						Author:    &discordgo.MessageEmbedAuthor{},
-						Color:     0x7f1734,
-						Title:     fmt.Sprintf("Search for %s", i.ApplicationCommandData().Options[0].StringValue()),
-						Fields:    fields,
-						Footer:    &discordgo.MessageEmbedFooter{Text: "ClaretForMUN.com"},
-						Timestamp: time.Now().Format(time.RFC3339),
-					}
+				}
+				embed = &discordgo.MessageEmbed{
+					Author:    &discordgo.MessageEmbedAuthor{},
+					Color:     0x7f1734,
+					Title:     fmt.Sprintf("Search for \"%s\"", i.ApplicationCommandData().Options[0].StringValue()),
+					Fields:    fields,
+					Footer:    &discordgo.MessageEmbedFooter{Text: "ClaretForMUN.com"},
+					Timestamp: time.Now().Format(time.RFC3339),
 				}
 			}
 
 			if len(fields) > 25 {
 				embed = errorEmbed("Too many courses were found, if possible please specify your search term.")
 			}
-
-			logger.Println("still exists?")
 
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,

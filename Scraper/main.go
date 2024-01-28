@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/gocolly/colly"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/robfig/cron"
-	"golang.org/x/exp/slices"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -55,6 +55,7 @@ type CourseTime struct {
 	StartTime string `gorm:"column:startTime;not null"`
 	EndTime   string `gorm:"column:endTime;not null"`
 	Location  string `gorm:"not null"`
+	Type      string `gorm:"not null"`
 }
 
 func (CourseTime) TableName() string {
@@ -176,6 +177,18 @@ func processCourse(title []string, body []string, semester int, subject string, 
 
 	instructor := strings.TrimPrefix(body[len(body)-1], "(P)")
 
+	var types []string
+
+	if timeStartLine != 0 {
+		for i := 0; i <= len(body[timeStartLine+8:])/7-1; i++ {
+			if !slices.Contains(types, body[timeStartLine+8:][7*i+5]) {
+				types = append(types, body[timeStartLine+8:][7*i+5])
+			}
+		}
+	}
+
+	var typesStr = strings.Join(types, ", ")
+
 	if timeStartLine != 0 {
 		db.Save(&Course{
 			Name:             strings.Join(title[:len(title)-3], " - "),
@@ -183,7 +196,7 @@ func processCourse(title []string, body []string, semester int, subject string, 
 			CRN:              title[len(title)-3],
 			Section:          title[len(title)-1],
 			DateRange:        &body[len(body)-3],
-			Type:             &body[len(body)-2],
+			Type:             &typesStr,
 			Instructor:       &instructor,
 			SubjectName:      strings.Split(title[len(title)-2], " ")[0] + Ternary(medical, "1", ""),
 			FullSubject:      subject,
@@ -236,6 +249,7 @@ func processCourse(title []string, body []string, semester int, subject string, 
 						EndTime:   Ternary(times[1+(i*7)] == "TBA", "TBA", parseTime(strings.Split(times[1+(i*7)], " - ")[1])),
 						Days:      times[2+(i*7)],
 						Location:  location,
+						Type:      times[5+(i*7)],
 					})
 				}
 			}
