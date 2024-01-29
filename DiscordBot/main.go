@@ -172,6 +172,7 @@ var (
 			if err != nil {
 				embed = errorEmbed(err.Error())
 			} else {
+
 				var comment string
 				if course.Comment != nil {
 					comment = fmt.Sprintf("%v", course.Comment)
