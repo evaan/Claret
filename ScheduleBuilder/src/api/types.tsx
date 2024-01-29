@@ -25,7 +25,8 @@ export interface Time {
     days: string;
     startTime: string;
     endTime: string;
-    location: string
+    location: string;
+    courseType: string;
     id: number;
 }
 

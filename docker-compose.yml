@@ -94,3 +94,20 @@ services:
       - traefik.http.routers.ics.rule=Host(`ics.claretformun.com`)
       - traefik.http.routers.ics.entrypoints=websecure
       - traefik.http.routers.ics.tls=true
+
+  discordbot:
+    container_name: discordBot
+    restart: always
+    build:
+      context: .
+      dockerfile: DiscordBot.Dockerfile
+    depends_on:
+      - postgres
+      - claretapi
+    ports:
+      - "8000:8000"
+    environment:
+      TOKEN: ${DISCORD_BOT_TOKEN}
+      API_URL: https://api.claretformun.com
+      GUILD_ID: ${DISCORD_GUILD_ID}
+      DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
