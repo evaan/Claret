@@ -104,8 +104,6 @@ services:
     depends_on:
       - postgres
       - claretapi
-    ports:
-      - "8000:8000"
     environment:
       TOKEN: ${DISCORD_BOT_TOKEN}
       API_URL: https://api.claretformun.com
