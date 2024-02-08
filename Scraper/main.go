@@ -97,7 +97,7 @@ func getLatestSemester(medical bool) int {
 
 	c.OnHTML("select[name=p_term]", func(e *colly.HTMLElement) {
 		e.DOM.Find("option").EachWithBreak(func(i int, s *goquery.Selection) bool {
-			if (!strings.HasSuffix(s.Text(), "Medicine") || medical) && s.Text() != "None" {
+			if ((!strings.HasSuffix(s.Text(), "Medicine") || medical) && !strings.Contains(s.Text(), "(View only)")) && s.Text() != "None" {
 				logger.Println("✅ Found Latest " + Ternary(medical, "Medical ", "") + "Semester: " + s.Text() + " (ID: " + first(s.Attr("value")) + ")")
 				semester = first(s.Attr("value"))
 				return false
