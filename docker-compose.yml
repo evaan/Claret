@@ -21,6 +21,7 @@ services:
     build:
       context: .
       dockerfile: WebServer.Dockerfile
+    restart: always
     environment:
       - API_URL=https://api.evaan.dev
     labels:
