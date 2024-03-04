@@ -92,11 +92,7 @@ export default function Schedule() {
     const [isCopied, setIsCopied] = React.useState(false);
 
     const copySharingURL = () => {
-        let sharingURL = "https://claretformun.com?crns=";
-        selectedCourses.forEach((course: Course) => {
-            sharingURL += course.crn + ",";
-        });
-        navigator.clipboard.writeText(sharingURL.slice(0, -1));
+        navigator.clipboard.writeText(window.location.href);
         setIsCopied(true);
         setTimeout(() => {setIsCopied(false);}, 1000);
     };
@@ -121,6 +117,8 @@ export default function Schedule() {
                                 <Button variant="text" style={{paddingLeft: "8px", paddingRight: "8px", paddingTop: "4px", paddingBottom: "4px"}} onClick={() => setSelectedCourses(selectedCourses.filter((course1: Course) => course1 !== course))}>&#10006;</Button>
                             </div>
                         ))}
+                        <hr />
+                        <Button variant="outline-danger" style={{width: "100%"}}>Clear Courses</Button>
                     </Accordion.Body>
                 </Accordion.Item>
                 <Accordion.Item eventKey="sharing">

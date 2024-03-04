@@ -20,6 +20,17 @@ var logger *log.Logger
 var err error
 var loc *time.Location
 
+//TODO MAKE IT SO WHEN THERES AN ERROR IT DOESNT CAUSE NULL POINTER
+
+type Semester struct {
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Latest   bool   `json:"latest"`
+	ViewOnly bool   `json:"viewOnly"`
+	Medical  bool   `json:"medical"`
+	MI       bool   `json:"mi"`
+}
+
 type Subject struct {
 	Name         string `json:"name"`
 	FriendlyName string `json:"friendlyName"`
@@ -49,6 +60,7 @@ type Time struct {
 	EndTime   string `json:"endTime"`
 	Location  string `json:"location"`
 	Type      string `json:"courseType"`
+	Semester  int    `json:"semester"`
 }
 
 type Seating struct {
@@ -62,9 +74,10 @@ type Seating struct {
 func all(w http.ResponseWriter, r *http.Request) {
 	output := make(map[string][]any)
 
-	subjects, err := db.Query("SELECT * FROM subjects")
+	subjects, err := db.Query("SELECT DISTINCT subject, \"subjectFull\" FROM courses")
 	if err != nil {
-		logger.Fatal(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 	defer subjects.Close()
 
@@ -73,15 +86,24 @@ func all(w http.ResponseWriter, r *http.Request) {
 
 		err := subjects.Scan(&subject.Name, &subject.FriendlyName)
 		if err != nil {
-			logger.Fatal(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 		}
 
 		output["subjects"] = append(output["subjects"], subject)
 	}
 
-	courses, err := db.Query("SELECT * FROM courses")
+	var courses *sql.Rows
+
+	if r.URL.Query().Get("semester") != "" {
+		courses, err = db.Query("SELECT * FROM courses WHERE semester = $1", r.URL.Query().Get("semester"))
+	} else {
+		courses, err = db.Query("SELECT * FROM courses")
+	}
+
 	if err != nil {
-		logger.Fatal(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 	defer courses.Close()
 
@@ -90,15 +112,24 @@ func all(w http.ResponseWriter, r *http.Request) {
 
 		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.SubjectFull, &course.Campus, &course.Comment, &course.Credits, &course.Semester, &course.Level)
 		if err != nil {
-			logger.Fatal(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 		}
 
 		output["courses"] = append(output["courses"], course)
 	}
 
-	times, err := db.Query("SELECT times.crn, times.days, times.\"startTime\", times.\"endTime\", times.location, times.type FROM times")
+	var times *sql.Rows
+
+	if r.URL.Query().Get("semester") != "" {
+		times, err = db.Query("SELECT times.crn, times.days, times.\"startTime\", times.\"endTime\", times.location, times.type FROM times WHERE semester = $1", r.URL.Query().Get("semester"))
+	} else {
+		times, err = db.Query("SELECT times.crn, times.days, times.\"startTime\", times.\"endTime\", times.location, times.type FROM times")
+	}
+
 	if err != nil {
-		logger.Fatal(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 	defer times.Close()
 
@@ -107,7 +138,8 @@ func all(w http.ResponseWriter, r *http.Request) {
 
 		err := times.Scan(&time.Crn, &time.Days, &time.StartTime, &time.EndTime, &time.Location, &time.Type)
 		if err != nil {
-			logger.Fatal(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 		}
 
 		output["times"] = append(output["times"], time)
@@ -115,7 +147,8 @@ func all(w http.ResponseWriter, r *http.Request) {
 
 	seatings, err := db.Query("SELECT * FROM seatings")
 	if err != nil {
-		logger.Fatal(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 	defer seatings.Close()
 
@@ -124,7 +157,8 @@ func all(w http.ResponseWriter, r *http.Request) {
 
 		err := seatings.Scan(&seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked)
 		if err != nil {
-			logger.Fatal(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 		}
 
 		output["seatings"] = append(output["seatings"], seating)
@@ -145,7 +179,8 @@ func subjects(w http.ResponseWriter, r *http.Request) {
 
 	subjects, err := db.Query("SELECT * FROM subjects")
 	if err != nil {
-		logger.Fatal(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 	defer subjects.Close()
 
@@ -154,7 +189,8 @@ func subjects(w http.ResponseWriter, r *http.Request) {
 
 		err := subjects.Scan(&subject.Name, &subject.FriendlyName)
 		if err != nil {
-			logger.Fatal(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 		}
 
 		output = append(output, subject)
@@ -162,7 +198,41 @@ func subjects(w http.ResponseWriter, r *http.Request) {
 
 	jsonString, err := json.Marshal(output)
 	if err != nil {
-		logger.Fatal(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(jsonString))
+}
+
+func semesters(w http.ResponseWriter, _ *http.Request) {
+	var output []Semester
+
+	semesters, err := db.Query("SELECT * FROM semesters")
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+	}
+	defer semesters.Close()
+
+	for semesters.Next() {
+		var semester Semester
+
+		err := semesters.Scan(&semester.ID, &semester.Name, &semester.Latest, &semester.ViewOnly, &semester.Medical, &semester.MI)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+		}
+
+		output = append(output, semester)
+	}
+
+	jsonString, err := json.Marshal(output)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -173,9 +243,16 @@ func subjects(w http.ResponseWriter, r *http.Request) {
 func courses(w http.ResponseWriter, r *http.Request) {
 	var output []Course
 
+	if r.URL.Query().Get("semester") == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("CRN was not provided, please add ?semester={semester} in your URL."))
+		return
+	}
+
 	courses, err := db.Query("SELECT * FROM courses WHERE courses.crn LIKE $1", "%"+r.URL.Query().Get("crn")+"%")
 	if err != nil {
-		logger.Fatal(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 	defer courses.Close()
 
@@ -184,7 +261,8 @@ func courses(w http.ResponseWriter, r *http.Request) {
 
 		err := courses.Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.SubjectFull, &course.Campus, &course.Comment, &course.Credits, &course.Semester, &course.Level)
 		if err != nil {
-			logger.Fatal(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 		}
 
 		output = append(output, course)
@@ -192,7 +270,8 @@ func courses(w http.ResponseWriter, r *http.Request) {
 
 	course, err := json.Marshal(output)
 	if err != nil {
-		logger.Fatal(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -205,15 +284,16 @@ func times(w http.ResponseWriter, r *http.Request) {
 
 	var output []Time
 
-	if r.URL.Query().Get("crn") == "" {
+	if r.URL.Query().Get("crn") == "" || r.URL.Query().Get("semester") == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("CRN was not provided, please add ?crn={crn} in your URL."))
+		w.Write([]byte("CRN was not provided, please add ?crn={crn}&semester={semester} in your URL."))
 		return
 	}
 
 	times, err := db.Query("SELECT times.crn, times.days, times.\"startTime\", times.\"endTime\", times.location, times.type FROM times WHERE times.crn = $1", r.URL.Query().Get("crn"))
 	if err != nil {
-		logger.Fatal(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 	defer times.Close()
 
@@ -222,7 +302,8 @@ func times(w http.ResponseWriter, r *http.Request) {
 
 		err := times.Scan(&time.Crn, &time.Days, &time.StartTime, &time.EndTime, &time.Location, &time.Type)
 		if err != nil {
-			logger.Fatal(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 		}
 
 		output = append(output, time)
@@ -230,7 +311,8 @@ func times(w http.ResponseWriter, r *http.Request) {
 
 	course, err := json.Marshal(output)
 	if err != nil {
-		logger.Fatal(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -240,9 +322,9 @@ func times(w http.ResponseWriter, r *http.Request) {
 func seating(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	if r.URL.Query().Get("crn") == "" {
+	if r.URL.Query().Get("crn") == "" || r.URL.Query().Get("semester") == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("CRN or Semester was not provided, please add ?crn={crn} in your URL."))
+		w.Write([]byte("CRN was not provided, please add ?crn={crn}&semester={semester} in your URL."))
 		return
 	}
 
@@ -313,20 +395,23 @@ func seating(w http.ResponseWriter, r *http.Request) {
 			}
 			checkedTime, err := strftime.Format("%Y-%m-%dT%H:%M", time.Now())
 			if err != nil {
-				logger.Fatal(err)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(err.Error()))
 			}
 			seating.Checked = checkedTime
 
 			jsonString, err = json.Marshal(append(output, seating))
 			if err != nil {
-				logger.Fatal(err)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(err.Error()))
 			}
 
 			_, err = db.Exec(`UPDATE seatings
 			SET available = $2, max = $3, waitlist = $4, checked = $5
 			WHERE crn = $1;`, seating.Crn, seating.Available, seating.Max, seating.Waitlist, seating.Checked)
 			if err != nil {
-				logger.Fatal(err)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(err.Error()))
 			}
 		}
 	} else {
@@ -335,12 +420,14 @@ func seating(w http.ResponseWriter, r *http.Request) {
 
 		err := db.QueryRow("SELECT * FROM seatings WHERE seatings.crn = $1", r.URL.Query().Get("crn")).Scan(&seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked)
 		if err != nil {
-			logger.Fatal(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 		}
 
 		jsonString, err = json.Marshal(append(output, seating))
 		if err != nil {
-			logger.Fatal(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 		}
 	}
 
@@ -381,6 +468,7 @@ func main() {
 
 	http.HandleFunc("/all", all)
 	http.HandleFunc("/subjects", subjects)
+	http.HandleFunc("/semesters", semesters)
 	http.HandleFunc("/courses", courses)
 	http.HandleFunc("/times", times)
 	http.HandleFunc("/seating", seating)

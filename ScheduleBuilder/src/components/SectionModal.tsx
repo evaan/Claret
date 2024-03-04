@@ -23,10 +23,14 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
     function addCourse() {
         props.onHide();
         setSelectedCourses([...selectedCourses, props.section]);
-        let crns = new URLSearchParams(window.location.search).get("crns");
-        if (crns != null) crns += "," + props.section.crn;
-        else crns = props.section.crn;
-        window.history.replaceState(null, "", `?crns=${crns}`);
+        const params = new URLSearchParams(window.location.search);
+        let crns = "";
+        selectedCourses.forEach((course: Course) => {
+            crns += course.crn + ",";
+        });
+        crns += props.section.crn;
+        params.set("crns", crns);
+        window.history.replaceState(null, "", `?${params}`);
     }
 
     function removeCourse () {

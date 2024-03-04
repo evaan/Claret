@@ -3,6 +3,15 @@ export interface Subject {
     friendlyName: string;
 }
 
+export interface Semester {
+    id: number
+    name: string
+    latest: boolean
+    viewOnly: boolean
+    medical: boolean
+    mi: boolean
+}
+
 export interface Course {
     crn: string;
     id: string;
