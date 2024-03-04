@@ -285,11 +285,11 @@ func courses(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Query().Get("semester") == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("CRN was not provided, please add ?semester={semester} in your URL."))
+		w.Write([]byte("Semester was not provided, please add ?semester={semester} in your URL."))
 		return
 	}
 
-	courses, err := db.Query("SELECT * FROM courses WHERE courses.crn LIKE $1", "%"+r.URL.Query().Get("crn")+"%")
+	courses, err := db.Query("SELECT * FROM courses WHERE courses.crn LIKE $1", "%"+r.URL.Query().Get("id")+"%")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
@@ -480,6 +480,10 @@ func seating(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(jsonString))
 }
 
+func index(w http.ResponseWriter, _ *http.Request) {
+	w.Write([]byte("<p>values in square brackets are optional, while curly brackets are mandatory</p><p><strong>/all?semester=[semester]</strong> - get <strong>all</strong> data of a semester, or if no semester is provided return <strong>every</strong> semester combined (will be >60MB of raw JSON)</p><p><strong>/subjects?semester=[semester]</strong> - return a list of all subjects from a semester, or all semesters if none is provided</p><p><strong>/semesters</strong> - return a list of all semesters</p><p><strong>/courses?semester={semester}&id=[id]</strong> - return a list of all courses from a semester that contains crn, if no crn is provided it will return all courses</p><p><strong>/times?semester={semester}&crn={crn}</strong> - return a list of all times for a certain course slot</p><p><strong>/seating?semester={semester}&crn={crn}</strong> - scrapes muns course offering for seatings, then returns them</p>"))
+}
+
 func main() {
 	logger = log.Default()
 	logger.Println("👋 Claret API")
@@ -511,6 +515,7 @@ func main() {
 		logger.Fatal(err)
 	}
 
+	http.HandleFunc("/", index)
 	http.HandleFunc("/all", all)
 	http.HandleFunc("/subjects", subjects)
 	http.HandleFunc("/semesters", semesters)
