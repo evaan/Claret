@@ -2,7 +2,7 @@ import React from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { useAtom } from "jotai";
-import { selectedCoursesAtom, timesAtom } from "../api/atoms";
+import { selectedCoursesAtom, selectedSemesterAtom, timesAtom } from "../api/atoms";
 import { Course, Time } from "../api/types";
 import * as Moment from "moment";
 import { extendMoment } from "moment-range";
@@ -21,20 +21,29 @@ export default function Schedule() {
     const [clearModalOpen, setClearModalOpen] = React.useState<boolean>(false);
     const closeClearModal = () => setClearModalOpen(false);
 
+    const [selectedSemester] = useAtom(selectedSemesterAtom);
+
     let credits = 0;
     let overlapping = false;
-    const courseTimes: {title: string, start: string, end?: string}[] = [];
+    let courseTimes: {title: string, start: string, end?: string}[] = [];
 
     const startTimes: number[] = [];
     const endTimes: number[] = [];
     let NACourses = 0;
+
+    React.useEffect(() => {
+        courseTimes = [];
+    }, [selectedSemester]);
+
     for (const course of selectedCourses) {
-        const courseTimes = times.filter((time: Time) => time.crn == course.crn);
-        courseTimes.forEach((time: Time) => {
-            if (time.startTime == "00:00" || time.endTime == "00:01") {NACourses++; return;}
-            startTimes.push(moment(time.startTime, "HH:mm").hour());
-            endTimes.push(moment(time.endTime, "HH:mm").hour()+1);
-        });
+        if (selectedSemester !== null) {
+            const courseTimes = times.filter((time: Time) => time.crn == course.crn);
+            courseTimes.forEach((time: Time) => {
+                if ((time.startTime == "00:00" || time.endTime == "00:01") && course.semester == selectedSemester?.id) {NACourses++; return;}
+                startTimes.push(moment(time.startTime, "HH:mm").hour());
+                endTimes.push(moment(time.endTime, "HH:mm").hour()+1);
+            });
+        }
     }
     let NAStartTime = startTimes.length == 0 ? 9 : Math.min(...startTimes);
 

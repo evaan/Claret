@@ -14,6 +14,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/robfig/cron"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -33,7 +34,7 @@ type Subject struct {
 }
 
 type Course struct {
-	CRN         string  `gorm:"primaryKey"`
+	CRN         string  `gorm:"not null"`
 	Id          string  `gorm:"not null"`
 	Name        string  `gorm:"not null"`
 	Section     string  `gorm:"not null"`
@@ -48,18 +49,20 @@ type Course struct {
 	SemesterID  int      `gorm:"column:semester;not null"`
 	Semester    Semester `gorm:"constraint:OnDelete:CASCADE;"`
 	Level       string   `gorm:"not null"`
+	Identifier  string   `gorm:"primaryKey"`
 }
 
 type CourseTime struct {
-	ID        int    `gorm:"primaryKey;autoIncrement"`
-	CourseCRN string `gorm:"column:crn"`
-	Course    Course `gorm:"constraint:OnDelete:CASCADE;"`
-	Days      string `gorm:"not null"`
-	StartTime string `gorm:"column:startTime;not null"`
-	EndTime   string `gorm:"column:endTime;not null"`
-	Location  string `gorm:"not null"`
-	Type      string `gorm:"not null"`
-	Semester  int    `gorm:"not null"`
+	ID               int    `gorm:"primaryKey;autoIncrement"`
+	CRN              string `gorm:"not null"`
+	Days             string `gorm:"not null"`
+	StartTime        string `gorm:"column:startTime;not null"`
+	EndTime          string `gorm:"column:endTime;not null"`
+	Location         string `gorm:"not null"`
+	Type             string `gorm:"not null"`
+	Semester         int    `gorm:"not null"`
+	CourseIdentifier string `gorm:"column:identifier"`
+	Course           Course `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 func (CourseTime) TableName() string {
@@ -67,17 +70,18 @@ func (CourseTime) TableName() string {
 }
 
 type Seating struct {
-	Crn       string `gorm:"primaryKey"`
-	Available int    `gorm:"not null"`
-	Max       int    `gorm:"not null"`
-	Waitlist  int
-	Checked   string `gorm:"not null"`
+	Identifier string `gorm:"primaryKey"`
+	Crn        string `gorm:"not null"`
+	Available  int    `gorm:"not null"`
+	Max        int    `gorm:"not null"`
+	Waitlist   int
+	Checked    string `gorm:"not null"`
 }
 
 var db *gorm.DB
 var logger *log.Logger
 var replaceMap map[string]string
-var existingCourses []string
+var coursesScraped int
 
 func first(s string, _ bool) string { return s }
 func Ternary[T any](b bool, t, f T) T {
@@ -107,7 +111,7 @@ func getSemesters() []Semester {
 				if err != nil {
 					logger.Fatal(err)
 				}
-				semesters = append(semesters, Semester{output, s.Text(), !foundLatest && !strings.Contains(s.Text(), "M"), strings.Contains(s.Text(), "(View only)"), strings.Contains(s.Text(), "Medicine"), !strings.Contains(s.Text(), "Medicine") && strings.Contains(s.Text(), "M")})
+				semesters = append(semesters, Semester{output, strings.Replace(s.Text(), " (View only)", "", 1), !foundLatest && !strings.Contains(s.Text(), "M"), strings.Contains(s.Text(), "(View only)"), strings.Contains(s.Text(), "Medicine"), !strings.Contains(s.Text(), "Medicine") && strings.Contains(s.Text(), "M")})
 				if !foundLatest && !strings.Contains(s.Text(), "M") {
 					foundLatest = true
 				}
@@ -210,6 +214,7 @@ func processCourse(title []string, body []string, semester int, subject string) 
 			Credits:     credits,
 			SemesterID:  semester,
 			Level:       level,
+			Identifier:  strconv.Itoa(semester) + title[len(title)-3],
 		})
 	} else {
 		db.Save(&Course{
@@ -224,60 +229,47 @@ func processCourse(title []string, body []string, semester int, subject string) 
 			Credits:     credits,
 			SemesterID:  semester,
 			Level:       level,
+			Identifier:  strconv.Itoa(semester) + title[len(title)-3],
 		})
 	}
 
-	existingCourses = append(existingCourses, title[len(title)-3])
+	coursesScraped++
 
-	addTimesToDB := func() {
-		if timeStartLine != 0 {
-			times := body[timeStartLine+8:]
+	if timeStartLine != 0 {
+		times := body[timeStartLine+8:]
 
-			for i := 0; i <= len(times)/7-1; i++ {
-				location := times[3+(i*7)]
-				for from, to := range replaceMap {
-					location = strings.Replace(location, from, to, 1)
-				}
+		for i := 0; i <= len(times)/7-1; i++ {
+			location := times[3+(i*7)]
+			for from, to := range replaceMap {
+				location = strings.Replace(location, from, to, 1)
+			}
 
-				if times[1+(i*7)] == "TBA" {
-					db.Save(&CourseTime{
-						CourseCRN: title[len(title)-3],
-						StartTime: "TBA",
-						EndTime:   "TBA",
-						Days:      times[2+(i*7)],
-						Location:  location,
-						Semester:  semester,
-					})
-				} else {
-					db.Save(&CourseTime{
-						CourseCRN: title[len(title)-3],
-						StartTime: parseTime(strings.Split(times[1+(i*7)], " - ")[0]),
-						EndTime:   Ternary(times[1+(i*7)] == "TBA", "TBA", parseTime(strings.Split(times[1+(i*7)], " - ")[1])),
-						Days:      times[2+(i*7)],
-						Location:  location,
-						Type:      times[5+(i*7)],
-						Semester:  semester,
-					})
-				}
+			if times[1+(i*7)] == "TBA" {
+				db.Save(&CourseTime{
+					CRN:              title[len(title)-3],
+					StartTime:        "TBA",
+					EndTime:          "TBA",
+					Days:             times[2+(i*7)],
+					Location:         location,
+					Semester:         semester,
+					CourseIdentifier: strconv.Itoa(semester) + title[len(title)-3],
+				})
+			} else {
+				db.Save(&CourseTime{
+					CRN:              title[len(title)-3],
+					StartTime:        parseTime(strings.Split(times[1+(i*7)], " - ")[0]),
+					EndTime:          Ternary(times[1+(i*7)] == "TBA", "TBA", parseTime(strings.Split(times[1+(i*7)], " - ")[1])),
+					Days:             times[2+(i*7)],
+					Location:         location,
+					Type:             times[5+(i*7)],
+					Semester:         semester,
+					CourseIdentifier: strconv.Itoa(semester) + title[len(title)-3],
+				})
 			}
 		}
 	}
 
-	var oldCourseTimeCount int64
-	db.Model(&CourseTime{}).Where("crn = ?", title[len(title)-3]).Count(&oldCourseTimeCount)
-
-	addTimesToDB()
-
-	var newCourseTimeCount int64
-	db.Model(&CourseTime{}).Where("crn = ?", title[len(title)-3]).Count(&oldCourseTimeCount)
-
-	if oldCourseTimeCount != newCourseTimeCount {
-		db.Where("crn = ?", title[len(title)-3]).Delete(&CourseTime{})
-	}
-
-	addTimesToDB()
-
-	db.Save(&Seating{Crn: title[len(title)-3], Available: 0, Max: 0, Waitlist: 0, Checked: "Never"})
+	db.Save(&Seating{Identifier: strconv.Itoa(semester) + title[len(title)-3], Crn: title[len(title)-3], Available: 0, Max: 0, Waitlist: 0, Checked: "Never"})
 }
 
 func processSubject(subject Subject, semester int, course string) {
@@ -315,43 +307,20 @@ func processSubject(subject Subject, semester int, course string) {
 	}
 }
 
-func removeNonExistingCourses() {
-	logger.Println("🗑️ Removing non-existent courses...")
-	rows, err := db.Raw("select crn, semester from courses").Rows()
-	if err != nil {
-		logger.Fatal(err)
-	}
-	for rows.Next() {
-		var crn string
-		var semester int
-		rows.Scan(&crn, &semester)
-		if !slices.Contains(existingCourses, crn) {
-			exists := true
-			c := colly.NewCollector()
-			c.OnHTML("span.errortext", func(e *colly.HTMLElement) {
-				exists = false
-			})
-			c.Visit("https://selfservice.mun.ca/direct/bwckschd.p_disp_detail_sched?term_in=" + strconv.Itoa(semester) + "&crn_in=" + crn)
-			c.Wait()
-			if !exists {
-				db.Where("crn = ?", crn).Delete(&Course{})
-			}
-		}
-	}
-	logger.Println("✅ Complete!")
-}
-
 func scrape() {
 	startTime := time.Now()
-	existingCourses = nil
+	coursesScraped = 0
 
 	logger.Println("⭐ Scraping Started!")
 
 	for _, semester := range getSemesters() {
 		//if course has already been scraped and its view only (is not going to be changed), dont scrape it
+		//this does make the first scrape SIGNIFICANTLY longer
 		if !semester.ViewOnly || db.Where("id = ?", semester.ID).Find(&Semester{}).RowsAffected == 0 {
-			db.Save(&semester)
 			logger.Println("📝 Processing Semester: " + semester.Name + " (" + strconv.Itoa(semester.ID) + ")")
+			//NOTE: this will warn about slow sql, this can safely be ignored
+			db.Where("id = ?", semester.ID).Delete(&Semester{})
+			db.Save(&semester)
 			for _, subject := range processSemester(semester.ID) {
 				logger.Println("	📝 Processing " + subject.FriendlyName + " (" + subject.Name + ")")
 				processSubject(subject, semester.ID, "")
@@ -364,7 +333,7 @@ func scrape() {
 
 	if os.Getenv("WEBHOOK_URL") != "" {
 		logger.Println("🔔 Sending message to Discord")
-		params := fmt.Sprintf(`{"username":"Claret Scraper","embeds":[{"author":{"name":"Claret Scraper Report","url":"https://claretformun.com"},"timestamp":"%s","color":65280,"fields":[{"name":"Scraping Time","value":"%s"},{"name":"Courses Scraped","value":"%d"}]}]}`, time.Now().Format(time.RFC3339), fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds())%60), len(existingCourses))
+		params := fmt.Sprintf(`{"username":"Claret Scraper","embeds":[{"author":{"name":"Claret Scraper Report","url":"https://claretformun.com"},"timestamp":"%s","color":65280,"fields":[{"name":"Scraping Time","value":"%s"},{"name":"Courses Scraped","value":"%d"}]}]}`, time.Now().Format(time.RFC3339), fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds())%60), coursesScraped)
 		r, err := http.NewRequest("POST", os.Getenv("WEBHOOK_URL"), bytes.NewBuffer([]byte(params)))
 		if err != nil {
 			panic(err)
@@ -379,7 +348,7 @@ func scrape() {
 	}
 
 	logger.Println("✅ Scrape Complete in " + fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds())%60) + "!")
-	logger.Printf("Courses scraped: %d", len(existingCourses))
+	logger.Printf("Courses scraped: %d", coursesScraped)
 }
 
 func main() {
@@ -437,4 +406,10 @@ func main() {
 	logger.Println("💾 Migrated Schemas!")
 
 	scrape()
+
+	c := cron.New()
+	c.AddFunc("0 30 4 * * 1", func() { scrape() })
+	c.Start()
+
+	select {}
 }

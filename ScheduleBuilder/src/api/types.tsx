@@ -27,6 +27,7 @@ export interface Course {
     credits: number;
     semester: number;
     level: string;
+    identifier: string;
 }
 
 export interface Time {
@@ -37,9 +38,11 @@ export interface Time {
     location: string;
     courseType: string;
     id: number;
+    identifier: string;
 }
 
 export interface Seating {
+    identifier: string;
     crn: string;
     available: string;
     max: string;
