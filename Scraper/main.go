@@ -82,6 +82,11 @@ type Seating struct {
 	Semester   Semester `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
+type ScrapedViewOnly struct {
+	Scraped  bool
+	ViewOnly bool
+}
+
 var db *gorm.DB
 var logger *log.Logger
 var replaceMap map[string]string
@@ -320,11 +325,13 @@ func scrape() {
 	for _, semester := range getSemesters() {
 		//if course has already been scraped and its view only (is not going to be changed), dont scrape it
 		//this does make the first scrape SIGNIFICANTLY longer
-		scraped := false
+		semester1 := Semester{}
 		if db.Where("id = ?", semester.ID).Find(&Semester{}).RowsAffected > 0 {
-			db.Select("scraped").Where("id = ?", semester.ID).First(&Semester{}).Scan(&scraped)
+			db.Where("id = ?", semester.ID).First(&Semester{}).Scan(&semester1)
 		}
-		if !semester.ViewOnly || db.Where("id = ?", semester.ID).Find(&Semester{}).RowsAffected == 0 || !scraped {
+
+		if (!semester1.ViewOnly || !semester.ViewOnly) || db.Where("id = ?", semester.ID).Find(&Semester{}).RowsAffected == 0 || !semester1.Scraped {
+			logger.Println("📝 Processing Semester: " + semester.Name + " (" + strconv.Itoa(semester.ID) + ")")
 			logger.Println("📝 Processing Semester: " + semester.Name + " (" + strconv.Itoa(semester.ID) + ")")
 			//NOTE: this will warn about slow sql, this can safely be ignored
 			db.Where("id = ?", semester.ID).Delete(&Semester{})
