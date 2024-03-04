@@ -72,6 +72,7 @@ type Seating struct {
 	Waitlist   any    `json:"waitlist"`
 	Checked    string `json:"checked"`
 	Identifier string `json:"identifier"`
+	Semester   int    `json:"semester"`
 }
 
 func all(w http.ResponseWriter, r *http.Request) {
@@ -161,7 +162,14 @@ func all(w http.ResponseWriter, r *http.Request) {
 		output["times"] = append(output["times"], time)
 	}
 
-	seatings, err := db.Query("SELECT * FROM seatings")
+	var seatings *sql.Rows
+
+	if r.URL.Query().Get("semester") != "" {
+		seatings, err = db.Query("SELECT * FROM seatings WHERE semester = $1", r.URL.Query().Get("semester"))
+	} else {
+		seatings, err = db.Query("SELECT * FROM seatings")
+	}
+
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
@@ -172,7 +180,7 @@ func all(w http.ResponseWriter, r *http.Request) {
 	for seatings.Next() {
 		var seating Seating
 
-		err := seatings.Scan(&seating.Identifier, &seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked)
+		err := seatings.Scan(&seating.Identifier, &seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked, &seating.Semester)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))

@@ -26,6 +26,7 @@ type Semester struct {
 	ViewOnly bool   `gorm:"column:viewOnly;not null"`
 	Medical  bool   `gorm:"not null"`
 	MI       bool   `gorm:"not null"`
+	Scraped  bool   `gorm:"not null"`
 }
 
 type Subject struct {
@@ -53,16 +54,17 @@ type Course struct {
 }
 
 type CourseTime struct {
-	ID               int    `gorm:"primaryKey;autoIncrement"`
-	CRN              string `gorm:"not null"`
-	Days             string `gorm:"not null"`
-	StartTime        string `gorm:"column:startTime;not null"`
-	EndTime          string `gorm:"column:endTime;not null"`
-	Location         string `gorm:"not null"`
-	Type             string `gorm:"not null"`
-	Semester         int    `gorm:"not null"`
-	CourseIdentifier string `gorm:"column:identifier"`
-	Course           Course `gorm:"constraint:OnDelete:CASCADE;"`
+	ID               int      `gorm:"primaryKey;autoIncrement"`
+	CRN              string   `gorm:"not null"`
+	Days             string   `gorm:"not null"`
+	StartTime        string   `gorm:"column:startTime;not null"`
+	EndTime          string   `gorm:"column:endTime;not null"`
+	Location         string   `gorm:"not null"`
+	Type             string   `gorm:"not null"`
+	SemesterID       int      `gorm:"column:semester;not null"`
+	Semester         Semester `gorm:"constraint:OnDelete:CASCADE;"`
+	CourseIdentifier string   `gorm:"column:identifier"`
+	Course           Course   `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 func (CourseTime) TableName() string {
@@ -75,7 +77,9 @@ type Seating struct {
 	Available  int    `gorm:"not null"`
 	Max        int    `gorm:"not null"`
 	Waitlist   int
-	Checked    string `gorm:"not null"`
+	Checked    string   `gorm:"not null"`
+	SemesterID int      `gorm:"column:semester;not null"`
+	Semester   Semester `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 var db *gorm.DB
@@ -111,7 +115,7 @@ func getSemesters() []Semester {
 				if err != nil {
 					logger.Fatal(err)
 				}
-				semesters = append(semesters, Semester{output, strings.Replace(s.Text(), " (View only)", "", 1), !foundLatest && !strings.Contains(s.Text(), "M"), strings.Contains(s.Text(), "(View only)"), strings.Contains(s.Text(), "Medicine"), !strings.Contains(s.Text(), "Medicine") && strings.Contains(s.Text(), "M")})
+				semesters = append(semesters, Semester{output, strings.Replace(s.Text(), " (View only)", "", 1), !foundLatest && !strings.Contains(s.Text(), "M"), strings.Contains(s.Text(), "(View only)"), strings.Contains(s.Text(), "Medicine"), !strings.Contains(s.Text(), "Medicine") && strings.Contains(s.Text(), "M"), false})
 				if !foundLatest && !strings.Contains(s.Text(), "M") {
 					foundLatest = true
 				}
@@ -251,7 +255,7 @@ func processCourse(title []string, body []string, semester int, subject string) 
 					EndTime:          "TBA",
 					Days:             times[2+(i*7)],
 					Location:         location,
-					Semester:         semester,
+					SemesterID:       semester,
 					CourseIdentifier: strconv.Itoa(semester) + title[len(title)-3],
 				})
 			} else {
@@ -262,14 +266,14 @@ func processCourse(title []string, body []string, semester int, subject string) 
 					Days:             times[2+(i*7)],
 					Location:         location,
 					Type:             times[5+(i*7)],
-					Semester:         semester,
+					SemesterID:       semester,
 					CourseIdentifier: strconv.Itoa(semester) + title[len(title)-3],
 				})
 			}
 		}
 	}
 
-	db.Save(&Seating{Identifier: strconv.Itoa(semester) + title[len(title)-3], Crn: title[len(title)-3], Available: 0, Max: 0, Waitlist: 0, Checked: "Never"})
+	db.Save(&Seating{Identifier: strconv.Itoa(semester) + title[len(title)-3], Crn: title[len(title)-3], Available: 0, Max: 0, Waitlist: 0, Checked: "Never", SemesterID: semester})
 }
 
 func processSubject(subject Subject, semester int, course string) {
@@ -316,7 +320,11 @@ func scrape() {
 	for _, semester := range getSemesters() {
 		//if course has already been scraped and its view only (is not going to be changed), dont scrape it
 		//this does make the first scrape SIGNIFICANTLY longer
-		if !semester.ViewOnly || db.Where("id = ?", semester.ID).Find(&Semester{}).RowsAffected == 0 {
+		scraped := false
+		if db.Where("id = ?", semester.ID).Find(&Semester{}).RowsAffected > 0 {
+			db.Select("scraped").Where("id = ?", semester.ID).First(&Semester{}).Scan(&scraped)
+		}
+		if !semester.ViewOnly || db.Where("id = ?", semester.ID).Find(&Semester{}).RowsAffected == 0 || !scraped {
 			logger.Println("📝 Processing Semester: " + semester.Name + " (" + strconv.Itoa(semester.ID) + ")")
 			//NOTE: this will warn about slow sql, this can safely be ignored
 			db.Where("id = ?", semester.ID).Delete(&Semester{})
@@ -324,8 +332,9 @@ func scrape() {
 			for _, subject := range processSemester(semester.ID) {
 				logger.Println("	📝 Processing " + subject.FriendlyName + " (" + subject.Name + ")")
 				processSubject(subject, semester.ID, "")
-
 			}
+			semester.Scraped = true
+			db.Save(&semester)
 		}
 	}
 
