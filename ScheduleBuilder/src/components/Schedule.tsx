@@ -2,12 +2,13 @@ import React from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { useAtom } from "jotai";
-import { selectedCoursesAtom, timesAtom } from "../api/atoms";
+import { selectedCoursesAtom, selectedSemesterAtom, timesAtom } from "../api/atoms";
 import { Course, Time } from "../api/types";
 import * as Moment from "moment";
 import { extendMoment } from "moment-range";
 import { Accordion, Button } from "react-bootstrap";
 import ICalModal from "./ICalModal";
+import ClearModal from "./ClearModal";
 const moment = extendMoment(Moment);
 
 export default function Schedule() {
@@ -17,20 +18,32 @@ export default function Schedule() {
     const [modalOpen, setModalOpen] = React.useState<boolean>(false);
     const closeModal = () => setModalOpen(false);
 
+    const [clearModalOpen, setClearModalOpen] = React.useState<boolean>(false);
+    const closeClearModal = () => setClearModalOpen(false);
+
+    const [selectedSemester] = useAtom(selectedSemesterAtom);
+
     let credits = 0;
     let overlapping = false;
-    const courseTimes: {title: string, start: string, end?: string}[] = [];
+    let courseTimes: {title: string, start: string, end?: string}[] = [];
 
     const startTimes: number[] = [];
     const endTimes: number[] = [];
     let NACourses = 0;
+
+    React.useEffect(() => {
+        courseTimes = [];
+    }, [selectedSemester]);
+
     for (const course of selectedCourses) {
-        const courseTimes = times.filter((time: Time) => time.crn == course.crn);
-        courseTimes.forEach((time: Time) => {
-            if (time.startTime == "00:00" || time.endTime == "00:01") {NACourses++; return;}
-            startTimes.push(moment(time.startTime, "HH:mm").hour());
-            endTimes.push(moment(time.endTime, "HH:mm").hour()+1);
-        });
+        if (selectedSemester !== null) {
+            const courseTimes = times.filter((time: Time) => time.crn == course.crn);
+            courseTimes.forEach((time: Time) => {
+                if ((time.startTime == "00:00" || time.endTime == "00:01") && course.semester == selectedSemester?.id) {NACourses++; return;}
+                startTimes.push(moment(time.startTime, "HH:mm").hour());
+                endTimes.push(moment(time.endTime, "HH:mm").hour()+1);
+            });
+        }
     }
     let NAStartTime = startTimes.length == 0 ? 9 : Math.min(...startTimes);
 
@@ -92,11 +105,7 @@ export default function Schedule() {
     const [isCopied, setIsCopied] = React.useState(false);
 
     const copySharingURL = () => {
-        let sharingURL = "https://claretformun.com?crns=";
-        selectedCourses.forEach((course: Course) => {
-            sharingURL += course.crn + ",";
-        });
-        navigator.clipboard.writeText(sharingURL.slice(0, -1));
+        navigator.clipboard.writeText(window.location.href);
         setIsCopied(true);
         setTimeout(() => {setIsCopied(false);}, 1000);
     };
@@ -121,6 +130,9 @@ export default function Schedule() {
                                 <Button variant="text" style={{paddingLeft: "8px", paddingRight: "8px", paddingTop: "4px", paddingBottom: "4px"}} onClick={() => setSelectedCourses(selectedCourses.filter((course1: Course) => course1 !== course))}>&#10006;</Button>
                             </div>
                         ))}
+                        <hr />
+                        <Button variant="outline-danger" style={{width: "100%"}} onClick={() => setClearModalOpen(true)}>Clear Courses</Button>
+                        <ClearModal isOpen={clearModalOpen} onHide={closeClearModal}/>
                     </Accordion.Body>
                 </Accordion.Item>
                 <Accordion.Item eventKey="sharing">
@@ -131,7 +143,7 @@ export default function Schedule() {
                         </Button>
                         <ICalModal isOpen={modalOpen} onHide={closeModal}/>
                         <Button className="mt-2 w-100" onClick={copySharingURL} disabled={selectedCourses.length == 0}>
-                        {selectedCourses.length == 0 ? "Copy Claret link to clipboard (No courses selected)" : isCopied ? "Copied!" : "Copy Claret link to clipboard"}
+                            {selectedCourses.length == 0 ? "Copy Claret link to clipboard (No courses selected)" : isCopied ? "Copied!" : "Copy Claret link to clipboard"}
                         </Button>
                     </Accordion.Body>
                 </Accordion.Item>

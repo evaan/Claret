@@ -3,6 +3,15 @@ export interface Subject {
     friendlyName: string;
 }
 
+export interface Semester {
+    id: number
+    name: string
+    latest: boolean
+    viewOnly: boolean
+    medical: boolean
+    mi: boolean
+}
+
 export interface Course {
     crn: string;
     id: string;
@@ -18,6 +27,7 @@ export interface Course {
     credits: number;
     semester: number;
     level: string;
+    identifier: string;
 }
 
 export interface Time {
@@ -28,9 +38,11 @@ export interface Time {
     location: string;
     courseType: string;
     id: number;
+    identifier: string;
 }
 
 export interface Seating {
+    identifier: string;
     crn: string;
     available: string;
     max: string;

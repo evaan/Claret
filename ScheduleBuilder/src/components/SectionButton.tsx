@@ -8,7 +8,7 @@ import { Button } from "react-bootstrap";
 export function SectionButton(props: {section: Course}) {
     const [times] = useAtom(timesAtom);
     const [modalOpen, setModalOpen] = React.useState<boolean>(false);
-    const tmp = times.filter((time: Time) => time.crn === props.section.crn).map((time: Time) => `${time.days}: ${time.startTime}-${time.endTime}`).join(", ");
+    const tmp = times.filter((time: Time) => time.identifier === props.section.identifier).map((time: Time) => `${time.days}: ${time.startTime}-${time.endTime}`).join(", ");
 
     const closeModal = () => setModalOpen(false);
 

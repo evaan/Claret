@@ -14,7 +14,7 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
     const [selectedTab] = useAtom(selectedTabAtom);
     const sortingOrder: {[name: string]: number} = {"Lecture": 1, "Laboratory": 2, "World Wide Web": 3};
     const [searchQuery] = useAtom(searchQueryAtom);
-
+    
     subjectCourses.forEach((course: Course) => {
         if(!JSON.stringify(uniqueCourses).includes(course.id) && (subjectCourses.filter((course1: Course) => course.id == course.id && course1.name !== "Laboratory").length == 0 || course.name !== "Laboratory")) uniqueCourses.push([course.id, course.name, course.subjectFull]);
     });

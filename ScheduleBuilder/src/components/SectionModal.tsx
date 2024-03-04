@@ -11,7 +11,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
     const [seatings, setSeatings] = useAtom(seatingAtom);
 
     async function updateSeatings(crn: string, semester: number) {
-        fetch(`${process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080"}/seating?crn=${crn}&semester=${semester.toString()}`).then(response => response.json()).then((data: Seating[]) => {setSeatings(seatings.map((seating: Seating) => seating.crn == props.section.crn ? data[0] : seating));});
+        fetch(`${process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080"}/seating?crn=${crn}&semester=${semester.toString()}`).then(response => response.json()).then((data: Seating[]) => {setSeatings(seatings.map((seating: Seating) => seating.identifier == props.section.identifier ? data[0] : seating));});
     }
 
     function formatDateString(input: string){
@@ -23,10 +23,14 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
     function addCourse() {
         props.onHide();
         setSelectedCourses([...selectedCourses, props.section]);
-        let crns = new URLSearchParams(window.location.search).get("crns");
-        if (crns != null) crns += "," + props.section.crn;
-        else crns = props.section.crn;
-        window.history.replaceState(null, "", `?crns=${crns}`);
+        const params = new URLSearchParams(window.location.search);
+        let crns = "";
+        selectedCourses.forEach((course: Course) => {
+            crns += course.crn + ",";
+        });
+        crns += props.section.crn;
+        params.set("crns", crns);
+        window.history.replaceState(null, "", `?${params}`);
     }
 
     function removeCourse () {
@@ -67,7 +71,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                         <li key={time.id}>{formatDateString(time.days)} - {moment(time.startTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")}-{moment(time.endTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")} - {time.location} {props.section.type.includes(", ") ? `(${time.courseType})` : ""}</li>
                     ))}
                 </ul>
-                {seatings.filter((seating: Seating) => seating.crn == props.section.crn).map((seating: Seating) => {
+                {seatings.filter((seating: Seating) => seating.identifier == props.section.identifier).map((seating: Seating) => {
                     if (props.isOpen && (moment(seating.checked).isBefore(moment().subtract(1, "hours")) || seating.checked == "Never")) {
                         setTimeout(() => {updateSeatings(props.section.crn, props.section.semester);}, 200);
                     }
@@ -78,7 +82,6 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                             <p><strong>Last Checked:</strong> {moment(seating.checked).fromNow().replace("Invalid date", "Never")} <Button variant="link" style={{padding: "0"}} disabled={moment(seating.checked).isAfter(moment().subtract(5, "minutes"))} onClick={async () => await updateSeatings(props.section.crn, props.section.semester)}>(Update)</Button></p>
                         </div>
                     );
-
                 })}
             </ModalBody>
             <ModalFooter>
