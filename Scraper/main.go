@@ -332,7 +332,6 @@ func scrape() {
 
 		if (!semester1.ViewOnly || !semester.ViewOnly) || db.Where("id = ?", semester.ID).Find(&Semester{}).RowsAffected == 0 || !semester1.Scraped {
 			logger.Println("📝 Processing Semester: " + semester.Name + " (" + strconv.Itoa(semester.ID) + ")")
-			logger.Println("📝 Processing Semester: " + semester.Name + " (" + strconv.Itoa(semester.ID) + ")")
 			//NOTE: this will warn about slow sql, this can safely be ignored
 			db.Where("id = ?", semester.ID).Delete(&Semester{})
 			db.Save(&semester)
