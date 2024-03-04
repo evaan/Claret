@@ -247,7 +247,7 @@ func subjects(w http.ResponseWriter, r *http.Request) {
 func semesters(w http.ResponseWriter, _ *http.Request) {
 	var output []Semester
 
-	semesters, err := db.Query("SELECT * FROM semesters")
+	semesters, err := db.Query("SELECT id, name, latest, \"viewOnly\", medical, mi FROM semesters")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
