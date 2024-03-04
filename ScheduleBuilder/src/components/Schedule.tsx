@@ -110,6 +110,17 @@ export default function Schedule() {
         setTimeout(() => {setIsCopied(false);}, 1000);
     };
 
+    function removeCourse(course: Course) {
+        setSelectedCourses(selectedCourses.filter((course1: Course) => course1 !== course));
+        const params = new URLSearchParams(window.location.search);
+        let crns = "";
+        selectedCourses.forEach((course1: Course) => {
+            if (course.crn !== course1.crn) crns += course.crn + ",";
+        });
+        params.set("crns", crns);
+        window.history.replaceState(null, "", `?${params}`);
+    }
+
     return (
         <div>
             <FullCalendar plugins={[timeGridPlugin]} headerToolbar={{left: "", center: "", right: ""}} allDaySlot={false} nowIndicator={false}
@@ -127,7 +138,7 @@ export default function Schedule() {
                         {selectedCourses.map((course: Course) => (
                             <div key={course.crn} style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px"}} className="border border-secondary rounded p-2">
                                 <p style={{paddingLeft: "8px"}}>{course.id} - {course.crn} - {course.type} - {course.instructor}</p>
-                                <Button variant="text" style={{paddingLeft: "8px", paddingRight: "8px", paddingTop: "4px", paddingBottom: "4px"}} onClick={() => setSelectedCourses(selectedCourses.filter((course1: Course) => course1 !== course))}>&#10006;</Button>
+                                <Button variant="text" style={{paddingLeft: "8px", paddingRight: "8px", paddingTop: "4px", paddingBottom: "4px"}} onClick={() => removeCourse(course)}>&#10006;</Button>
                             </div>
                         ))}
                         <hr />
