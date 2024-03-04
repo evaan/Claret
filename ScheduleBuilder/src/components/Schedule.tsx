@@ -8,6 +8,7 @@ import * as Moment from "moment";
 import { extendMoment } from "moment-range";
 import { Accordion, Button } from "react-bootstrap";
 import ICalModal from "./ICalModal";
+import ClearModal from "./ClearModal";
 const moment = extendMoment(Moment);
 
 export default function Schedule() {
@@ -16,6 +17,9 @@ export default function Schedule() {
 
     const [modalOpen, setModalOpen] = React.useState<boolean>(false);
     const closeModal = () => setModalOpen(false);
+
+    const [clearModalOpen, setClearModalOpen] = React.useState<boolean>(false);
+    const closeClearModal = () => setClearModalOpen(false);
 
     let credits = 0;
     let overlapping = false;
@@ -118,7 +122,8 @@ export default function Schedule() {
                             </div>
                         ))}
                         <hr />
-                        <Button variant="outline-danger" style={{width: "100%"}}>Clear Courses</Button>
+                        <Button variant="outline-danger" style={{width: "100%"}} onClick={() => setClearModalOpen(true)}>Clear Courses</Button>
+                        <ClearModal isOpen={clearModalOpen} onHide={closeClearModal}/>
                     </Accordion.Body>
                 </Accordion.Item>
                 <Accordion.Item eventKey="sharing">
@@ -129,7 +134,7 @@ export default function Schedule() {
                         </Button>
                         <ICalModal isOpen={modalOpen} onHide={closeModal}/>
                         <Button className="mt-2 w-100" onClick={copySharingURL} disabled={selectedCourses.length == 0}>
-                        {selectedCourses.length == 0 ? "Copy Claret link to clipboard (No courses selected)" : isCopied ? "Copied!" : "Copy Claret link to clipboard"}
+                            {selectedCourses.length == 0 ? "Copy Claret link to clipboard (No courses selected)" : isCopied ? "Copied!" : "Copy Claret link to clipboard"}
                         </Button>
                     </Accordion.Body>
                 </Accordion.Item>
