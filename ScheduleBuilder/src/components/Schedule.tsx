@@ -297,7 +297,7 @@ export default function Schedule() {
     const params = new URLSearchParams(window.location.search);
     let crns = "";
     selectedCourses.forEach((course1: Course) => {
-      if (course.crn !== course1.crn) crns += course.crn + ",";
+      if (course.crn !== course1.crn) crns += course1.crn + ",";
     });
     params.set("crns", crns);
     window.history.replaceState(null, "", `?${params}`);
