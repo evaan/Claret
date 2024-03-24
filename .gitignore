@@ -22,4 +22,4 @@ ClaretBot
 RateMyProfScraper
 RateMyProfScraper.exe
 rmp.json
-*.txt
+output*.txt
