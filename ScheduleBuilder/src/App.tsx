@@ -88,7 +88,7 @@ export default function App() {
                         }, 500);
                     }}>
                         {subjects.sort(function(a, b) {if (a.friendlyName < b.friendlyName) return -1; else return 1;}).map((subject, index) => {
-                            if (courses.filter((course: Course) => course.subject == subject.name && shouldShow(course, filters) && (searchQuery == "" || course.id.toLowerCase().includes(searchQuery.toLowerCase()) || course.subjectFull.toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) {
+                            if (courses.filter((course: Course) => course.subject == subject.name && shouldShow(course, filters) && (searchQuery == "" || course.id.toLowerCase().includes(searchQuery.toLowerCase()) || course.subjectFull.toLowerCase().includes(searchQuery.toLowerCase()) || course.name.toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) {
                                 return (<SubjectAccordion subject={subject} index={index} key={index} />);
                             }
                         })}

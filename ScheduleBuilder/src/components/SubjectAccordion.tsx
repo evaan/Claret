@@ -28,7 +28,8 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
                 {selectedTab.includes(props.index.toString()) &&
                     <Accordion>
                     {uniqueCourses.sort(function(x, y) {return x>y ? 1: -1;}).map((course: [id: string, name: string, subject: string]) => {
-                        if (courses.filter((course1: Course) => course1.id == course[0] && shouldShow(course1, filters) && (searchQuery == "" || course[0].toLowerCase().includes(searchQuery.toLowerCase()) || course[2].toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) return (
+                        console.log(course[1]);
+                        if (courses.filter((course1: Course) => course1.id == course[0] && shouldShow(course1, filters) && (searchQuery == "" || course[0].toLowerCase().includes(searchQuery.toLowerCase()) || course[2].toLowerCase().includes(searchQuery.toLowerCase()) || course[1].toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) return (
                             <Accordion.Item eventKey={course[0]} key={course[0]}>
                                 <Accordion.Header>
                                     {course[0]} - {course[1]}
