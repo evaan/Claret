@@ -81,11 +81,14 @@ func all(w http.ResponseWriter, r *http.Request) {
 	var subjects *sql.Rows
 	var err error
 
-	if r.URL.Query().Get("semester") != "" {
-		subjects, err = db.Query("SELECT DISTINCT subject, \"subjectFull\" FROM courses WHERE semester = $1", r.URL.Query().Get("semester"))
-	} else {
-		subjects, err = db.Query("SELECT DISTINCT subject, \"subjectFull\" FROM courses")
+	//TODO: maybe make it cache at one point through cloudflare tasks or something?
+	if r.URL.Query().Get("semester") == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Semester was not provided, please add ?semester={semester} in your URL."))
+		return
 	}
+
+	subjects, err = db.Query("SELECT DISTINCT subject, \"subjectFull\" FROM courses WHERE semester = $1", r.URL.Query().Get("semester"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
