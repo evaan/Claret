@@ -211,7 +211,7 @@ func processCourse(title []string, body []string, semester int, subject string) 
 			if !slices.Contains(types, times[7*i+5]) {
 				types = append(types, times[7*i+5])
 			}
-			for _, name := range strings.Split(strings.TrimPrefix(times[7*i+6], "(P)"), ", ") {
+			for _, name := range strings.Split(strings.ReplaceAll(times[7*i+6], "(P)", ""), ", ") {
 				if !strings.Contains(instructor, name) {
 					instructor += name + ", "
 				}
@@ -220,7 +220,7 @@ func processCourse(title []string, body []string, semester int, subject string) 
 
 		instructor = strings.TrimSuffix(instructor, ", ")
 	} else {
-		instructor = strings.TrimPrefix(body[len(body)-1], "(P)")
+		instructor = strings.ReplaceAll(body[len(body)-1], "(P)", "")
 	}
 
 	var typesStr = strings.Join(types, ", ")
@@ -391,7 +391,12 @@ func scrape() {
 	rmp()
 
 	//makes adding rmp stuff easier
-	rows, err := db.Raw("SELECT instructor, semester FROM courses WHERE instructor IS NOT NULL AND instructor != 'TBA' UNION ALL SELECT name, semester FROM prof_and_semesters;").Rows()
+	rows, err := db.Raw(`
+	SELECT DISTINCT unnest(string_to_array(instructor, ', ')), semester from courses
+	WHERE instructor IS NOT NULL AND instructor != 'TBA'
+	EXCEPT
+	SELECT name, semester from prof_and_semesters;
+	`).Rows()
 	if err != nil {
 		panic(err)
 	}
@@ -399,11 +404,7 @@ func scrape() {
 		var instructor string
 		var semester int
 		rows.Scan(&instructor, &semester)
-		for _, prof := range strings.Split(instructor, ", ") {
-			if instructor != "TBA" && db.Where("name = ? AND semester = ?", prof, semester).Find(&ProfAndSemester{}).RowsAffected == 0 {
-				db.Create(&ProfAndSemester{Name: prof, SemesterID: semester})
-			}
-		}
+		db.Create(&ProfAndSemester{Name: instructor, SemesterID: semester})
 	}
 }
 
