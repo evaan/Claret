@@ -49,3 +49,12 @@ export interface Seating {
     waitlist: string;
     checked: string;
 }
+
+export interface Professor {
+    name: string;
+    rating: number;
+    id: number;
+    difficulty: number;
+    ratings: number;
+    wouldRetake: number;
+}

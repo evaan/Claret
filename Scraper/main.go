@@ -67,6 +67,13 @@ type CourseTime struct {
 	Course           Course   `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
+type ProfAndSemester struct {
+	ID         int      `gorm:"primaryKey;autoIncrement"`
+	Name       string   `gorm:"not null"`
+	SemesterID int      `gorm:"column:semester;not null"`
+	Semester   Semester `gorm:"constraint:OnDelete:CASCADE;"`
+}
+
 func (CourseTime) TableName() string {
 	return "times"
 }
@@ -193,16 +200,27 @@ func processCourse(title []string, body []string, semester int, subject string) 
 		comment = &jointStrings
 	}
 
-	instructor := strings.TrimPrefix(body[len(body)-1], "(P)")
-
 	var types []string
 
+	var instructor string
+
 	if timeStartLine != 0 {
-		for i := 0; i <= len(body[timeStartLine+8:])/7-1; i++ {
-			if !slices.Contains(types, body[timeStartLine+8:][7*i+5]) {
-				types = append(types, body[timeStartLine+8:][7*i+5])
+		times := body[timeStartLine+8:]
+
+		for i := 0; i <= len(times)/7-1; i++ {
+			if !slices.Contains(types, times[7*i+5]) {
+				types = append(types, times[7*i+5])
+			}
+			for _, name := range strings.Split(strings.TrimPrefix(times[7*i+6], "(P)"), ", ") {
+				if !strings.Contains(instructor, name) {
+					instructor += name + ", "
+				}
 			}
 		}
+
+		instructor = strings.TrimSuffix(instructor, ", ")
+	} else {
+		instructor = strings.TrimPrefix(body[len(body)-1], "(P)")
 	}
 
 	var typesStr = strings.Join(types, ", ")
@@ -225,6 +243,11 @@ func processCourse(title []string, body []string, semester int, subject string) 
 			Level:       level,
 			Identifier:  strconv.Itoa(semester) + title[len(title)-3],
 		})
+		for _, prof := range strings.Split(instructor, ", ") {
+			if instructor != "TBA" && db.Where("name = ? AND semester = ?", prof, semester).Find(&ProfAndSemester{}).RowsAffected == 0 {
+				db.Create(&ProfAndSemester{Name: prof, SemesterID: semester})
+			}
+		}
 	} else {
 		db.Save(&Course{
 			Name:        strings.Join(title[:len(title)-3], " - "),
@@ -366,6 +389,22 @@ func scrape() {
 	logger.Printf("Courses scraped: %d", coursesScraped)
 
 	rmp()
+
+	//makes adding rmp stuff easier
+	rows, err := db.Raw("SELECT instructor, semester FROM courses WHERE instructor IS NOT NULL AND instructor != 'TBA' UNION ALL SELECT name, semester FROM prof_and_semesters;").Rows()
+	if err != nil {
+		panic(err)
+	}
+	for rows.Next() {
+		var instructor string
+		var semester int
+		rows.Scan(&instructor, &semester)
+		for _, prof := range strings.Split(instructor, ", ") {
+			if instructor != "TBA" && db.Where("name = ? AND semester = ?", prof, semester).Find(&ProfAndSemester{}).RowsAffected == 0 {
+				db.Create(&ProfAndSemester{Name: prof, SemesterID: semester})
+			}
+		}
+	}
 }
 
 func main() {
@@ -421,8 +460,13 @@ func main() {
 	db.AutoMigrate(&CourseTime{})
 	db.AutoMigrate(&Seating{})
 	db.AutoMigrate(&Professor{})
+	db.AutoMigrate(&ProfAndSemester{})
 	logger.Println("💾 Migrated Schemas!")
 
+	if slices.Contains(os.Args, "--rmp") {
+		rmp()
+		os.Exit(0)
+	}
 	scrape()
 
 	c := cron.New()

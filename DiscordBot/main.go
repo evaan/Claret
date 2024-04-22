@@ -168,7 +168,7 @@ var (
 			var embed *discordgo.MessageEmbed
 
 			var course Course
-			err := db.QueryRow("SELECT * FROM courses WHERE courses.crn = $1", i.ApplicationCommandData().Options[0].StringValue()).Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.SubjectFull, &course.Campus, &course.Comment, &course.Credits, &course.Semester, &course.Level)
+			err := db.QueryRow("SELECT crn, id, name, section \"dateRange\", type, instructor, subject, \"subjectFull\", campus, comment, credits, semester, level, identifier FROM courses WHERE courses.crn = $1", i.ApplicationCommandData().Options[0].StringValue()).Scan(&course.Crn, &course.Id, &course.Name, &course.Section, &course.DateRange, &course.CourseType, &course.Instructor, &course.Subject, &course.SubjectFull, &course.Campus, &course.Comment, &course.Credits, &course.Semester, &course.Level)
 			if err != nil {
 				embed = errorEmbed(err.Error())
 			} else {

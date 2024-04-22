@@ -75,6 +75,15 @@ type Seating struct {
 	Semester   int    `json:"semester"`
 }
 
+type Professor struct {
+	Name        string  `json:"name"`
+	Rating      float64 `json:"rating"`
+	Id          int     `json:"id"`
+	Difficulty  float64 `json:"difficulty"`
+	RatingCount int     `json:"ratings"`
+	WouldRetake float64 `json:"wouldRetake"`
+}
+
 func all(w http.ResponseWriter, r *http.Request) {
 	output := make(map[string][]any)
 
@@ -109,9 +118,9 @@ func all(w http.ResponseWriter, r *http.Request) {
 	var courses *sql.Rows
 
 	if r.URL.Query().Get("semester") != "" {
-		courses, err = db.Query("SELECT * FROM courses WHERE semester = $1", r.URL.Query().Get("semester"))
+		courses, err = db.Query("SELECT crn, id, name, section, \"dateRange\", type, instructor, subject, \"subjectFull\", campus, comment, credits, semester, level, identifier FROM courses WHERE semester = $1", r.URL.Query().Get("semester"))
 	} else {
-		courses, err = db.Query("SELECT * FROM courses")
+		courses, err = db.Query("SELECT crn, id, name, section, \"dateRange\", type, instructor, subject, \"subjectFull\", campus, comment, credits, semester, level, identifier FROM courses")
 	}
 
 	if err != nil {
@@ -165,9 +174,9 @@ func all(w http.ResponseWriter, r *http.Request) {
 	var seatings *sql.Rows
 
 	if r.URL.Query().Get("semester") != "" {
-		seatings, err = db.Query("SELECT * FROM seatings WHERE semester = $1", r.URL.Query().Get("semester"))
+		seatings, err = db.Query("SELECT identifier, crn, available, max, waitlist, checked, semester FROM seatings WHERE semester = $1", r.URL.Query().Get("semester"))
 	} else {
-		seatings, err = db.Query("SELECT * FROM seatings")
+		seatings, err = db.Query("SELECT identifier, crn, available, max, waitlist, checked, semester FROM seatings")
 	}
 
 	if err != nil {
@@ -188,6 +197,28 @@ func all(w http.ResponseWriter, r *http.Request) {
 		}
 
 		output["seatings"] = append(output["seatings"], seating)
+	}
+
+	profs, err := db.Query("SELECT DISTINCT p.name, p.rating, p.id, p.difficulty, p.rating_count, p.would_retake FROM professors p JOIN prof_and_semesters ps ON p.name = ps.name AND ps.semester = $1", r.URL.Query().Get("semester"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	defer profs.Close()
+
+	for profs.Next() {
+		var prof Professor
+
+		err := profs.Scan(&prof.Name, &prof.Rating, &prof.Id, &prof.Difficulty, &prof.RatingCount, &prof.WouldRetake)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		output["profs"] = append(output["profs"], prof)
+
 	}
 
 	jsonString, err := json.Marshal(output)
@@ -289,7 +320,7 @@ func courses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	courses, err := db.Query("SELECT * FROM courses WHERE courses.crn LIKE $1", "%"+r.URL.Query().Get("id")+"%")
+	courses, err := db.Query("SELECT crn, id, name, section, \"dateRange\", type, instructor, subject, \"subjectFull\", campus, comment, credits, semester, level, identifier FROM courses WHERE courses.crn LIKE $1", "%"+r.URL.Query().Get("id")+"%")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
@@ -318,6 +349,44 @@ func courses(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(course))
+}
+
+func rmp(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	var output []Professor
+
+	profs, err := db.Query("SELECT name, rating, id, difficulty, rating_count, would_retake FROM professors WHERE LOWER(name) LIKE LOWER($1)", "%"+r.URL.Query().Get("name")+"%")
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	defer profs.Close()
+
+	for profs.Next() {
+		var prof Professor
+
+		err := profs.Scan(&prof.Name, &prof.Rating, &prof.Id, &prof.Difficulty, &prof.RatingCount, &prof.WouldRetake)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		output = append(output, prof)
+	}
+
+	course, err := json.Marshal(output)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(course))
 }
@@ -461,7 +530,7 @@ func seating(w http.ResponseWriter, r *http.Request) {
 		var seating Seating
 		var output []Seating
 
-		err := db.QueryRow("SELECT * FROM seatings WHERE seatings.identifier = $1", r.URL.Query().Get("semester")+r.URL.Query().Get("crn")).Scan(&seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked, &seating.Identifier)
+		err := db.QueryRow("SELECT identifier, crn, available, max, waitlist, checked, semester FROM seatings WHERE seatings.identifier = $1", r.URL.Query().Get("semester")+r.URL.Query().Get("crn")).Scan(&seating.Crn, &seating.Available, &seating.Max, &seating.Waitlist, &seating.Checked, &seating.Identifier)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
@@ -481,7 +550,7 @@ func seating(w http.ResponseWriter, r *http.Request) {
 }
 
 func index(w http.ResponseWriter, _ *http.Request) {
-	w.Write([]byte("<p>values in square brackets are optional, while curly brackets are mandatory</p><p><strong>/all?semester=[semester]</strong> - get <strong>all</strong> data of a semester, or if no semester is provided return <strong>every</strong> semester combined (will be >60MB of raw JSON)</p><p><strong>/subjects?semester=[semester]</strong> - return a list of all subjects from a semester, or all semesters if none is provided</p><p><strong>/semesters</strong> - return a list of all semesters</p><p><strong>/courses?semester={semester}&id=[id]</strong> - return a list of all courses from a semester that contains crn, if no crn is provided it will return all courses</p><p><strong>/times?semester={semester}&crn={crn}</strong> - return a list of all times for a certain course slot</p><p><strong>/seating?semester={semester}&crn={crn}</strong> - scrapes muns course offering for seatings, then returns them</p>"))
+	w.Write([]byte("<p>values in square brackets are optional, while curly brackets are mandatory</p><p><strong>/all?semester=[semester]</strong> - get <strong>all</strong> data of a semester, or if no semester is provided return <strong>every</strong> semester combined (will be >60MB of raw JSON)</p><p><strong>/subjects?semester=[semester]</strong> - return a list of all subjects from a semester, or all semesters if none is provided</p><p><strong>/semesters</strong> - return a list of all semesters</p><p><strong>/courses?semester={semester}&id=[id]</strong> - return a list of all courses from a semester that contains crn, if no crn is provided it will return all courses</p><p><strong>/times?semester={semester}&crn={crn}</strong> - return a list of all times for a certain course slot</p><p><strong>/seating?semester={semester}&crn={crn}</strong> - scrapes muns course offering for seatings, then returns them</p><p><strong>/rmp?name=[name]</strong> - returns all mun rate my prof ratings, or a search for a specific name"))
 }
 
 func main() {
@@ -522,6 +591,7 @@ func main() {
 	http.HandleFunc("/courses", courses)
 	http.HandleFunc("/times", times)
 	http.HandleFunc("/seating", seating)
+	http.HandleFunc("/rmp", rmp)
 
 	logger.Println("✅ API running server on port", PORT)
 	http.ListenAndServe(":"+PORT, nil)

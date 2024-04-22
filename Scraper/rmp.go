@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 
@@ -90,6 +91,10 @@ func rmp() {
 		logger.Panic(err)
 	}
 
+	file, _ := os.Create("rmp.json")
+	file.Write(resBody)
+	file.Close()
+
 	var root Root
 	err = json.Unmarshal(resBody, &root)
 	if err != nil {
@@ -98,17 +103,14 @@ func rmp() {
 	}
 
 	var profs []string
-	munProfDepts := make(map[string][]string)
-	rows, err := db.Raw("select instructor, \"subjectFull\" from courses").Rows()
+	rows, err := db.Raw("select distinct instructor from courses").Rows()
 	if err != nil {
 		panic(err)
 	}
 	for rows.Next() {
 		var prof sql.NullString
-		var department string
-		rows.Scan(&prof, &department)
+		rows.Scan(&prof)
 		if prof.Valid && (prof.String != "TBA" && !slices.Contains(profs, prof.String)) {
-			munProfDepts[prof.String] = append(munProfDepts[prof.String], department)
 			profs = append(profs, strings.Split(prof.String, ", ")...)
 		}
 	}

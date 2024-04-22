@@ -1,12 +1,13 @@
 import React from "react";
 import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from "react-bootstrap";
-import { Course, Seating, Time } from "../api/types";
+import { Course, Professor, Seating, Time } from "../api/types";
 import { useAtom } from "jotai";
-import { seatingAtom, selectedCoursesAtom, timesAtom } from "../api/atoms";
+import { profsAtom, seatingAtom, selectedCoursesAtom, timesAtom } from "../api/atoms";
 import moment from "moment";
 
 export default function SectionModal(props: {isOpen: boolean; onHide: () => void; section: Course}) {
     const [times] = useAtom(timesAtom);
+    const [profs] = useAtom(profsAtom);
     const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
     const [seatings, setSeatings] = useAtom(seatingAtom);
 
@@ -64,10 +65,14 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                 <p><strong>Date Range:</strong> {props.section.dateRange !== null ? props.section.dateRange : "Unknown"}</p>
                 <p><strong>Instructors:</strong></p>
                 <ul className="m-0">
-                    {/** Do keep in mind that the RMP searching doesnt work very well, potentially find a way to make it better? **/}
-                    {props.section.instructor != null && props.section.instructor.split(", ").map((instructor: string) => (
-                        <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/search/professors/1441?q=${instructor}`} rel="noreferrer" target="_blank">(Search on RateMyProfessors)</a>}</li>
-                    ))}
+                    {props.section.instructor != null && props.section.instructor.split(", ").map((instructor: string) => {
+                        if (profs.filter((prof: Professor) => prof.name == instructor).length > 0) {
+                            const prof = profs.filter((prof: Professor) => prof.name == instructor)[0];
+                            return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/professor/${prof.id}`} rel="noreferrer" target="_blank">(RateMyProfessors Rating: {prof.rating}/5)</a>}</li>
+                        }
+                        else
+                            return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/search/professors/1441?q=${instructor}`} rel="noreferrer" target="_blank">(Search on RateMyProfessors)</a>}</li>
+                    })}
                 </ul>
                 <p><strong>Times:</strong></p>
                 <ul className="m-0">
@@ -81,7 +86,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                     }
                     return (
                         <div key={seating.crn}>
-                            <p><strong>Seats Available:</strong> {seating.available}/{seating.max}</p>
+                            <p><strong>Seats Available:</strong> <span className={seating.available == "0" ? "text-danger" : ""}>{seating.available}/{seating.max}</span></p>
                             <p><strong>Waitlist:</strong> {seating.waitlist}</p>
                             <p><strong>Last Checked:</strong> {moment(seating.checked).fromNow().replace("Invalid date", "Never")} <Button variant="link" style={{padding: "0"}} disabled={moment(seating.checked).isAfter(moment().subtract(5, "minutes"))} onClick={async () => await updateSeatings(props.section.crn, props.section.semester)}>(Update)</Button></p>
                         </div>
