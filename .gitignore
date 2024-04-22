@@ -1,7 +1,3 @@
-# Scraper
-__pycache__
-courses.*
-
 .env
 
 # API
@@ -22,3 +18,8 @@ postgres-data
 
 ClaretBot.exe
 ClaretBot
+
+RateMyProfScraper
+RateMyProfScraper.exe
+rmp.json
+output*.txt
