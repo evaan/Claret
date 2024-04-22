@@ -364,6 +364,8 @@ func scrape() {
 
 	logger.Println("✅ Scrape Complete in " + fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds())%60) + "!")
 	logger.Printf("Courses scraped: %d", coursesScraped)
+
+	rmp()
 }
 
 func main() {
@@ -418,6 +420,7 @@ func main() {
 	db.AutoMigrate(&Course{})
 	db.AutoMigrate(&CourseTime{})
 	db.AutoMigrate(&Seating{})
+	db.AutoMigrate(&Professor{})
 	logger.Println("💾 Migrated Schemas!")
 
 	scrape()
