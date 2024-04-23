@@ -8,7 +8,7 @@ import {
   timesAtom,
 } from "../api/atoms";
 import { Course, Time } from "../api/types";
-import * as Moment from "moment";
+import Moment from "moment";
 import { extendMoment } from "moment-range";
 import { Accordion, Button } from "react-bootstrap";
 import ICalModal from "./ICalModal";
