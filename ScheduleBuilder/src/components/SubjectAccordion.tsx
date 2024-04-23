@@ -6,7 +6,7 @@ import { Course, Subject } from "../api/types";
 import { SectionButton } from "./SectionButton";
 import { shouldShow } from "../api/functions";
 
-export default function SubjectAccordion(props: {subject: Subject, index: number,}) {
+export default function SubjectAccordion(props: {subject: Subject, index: string,}) {
     const [filters] = useAtom(filterAtom);
     const [courses] = useAtom(coursesAtom);
     const subjectCourses = courses.filter((course: Course) => course.subject === props.subject.name);
@@ -20,12 +20,12 @@ export default function SubjectAccordion(props: {subject: Subject, index: number
     });
 
     return (
-        <Accordion.Item eventKey={props.index.toString()}>
+        <Accordion.Item eventKey={props.index}>
             <Accordion.Header>
                 {props.subject.friendlyName}
             </Accordion.Header>
             <Accordion.Body>
-                {selectedTab.includes(props.index.toString()) &&
+                {selectedTab.includes(props.index) &&
                     <Accordion>
                     {uniqueCourses.sort(function(x, y) {return x>y ? 1: -1;}).map((course: [id: string, name: string, subject: string]) => {
                         console.log(course[1]);

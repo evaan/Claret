@@ -13,7 +13,23 @@ import { extendMoment } from "moment-range";
 import { Accordion, Button } from "react-bootstrap";
 import ICalModal from "./ICalModal";
 import ClearModal from "./ClearModal";
+import SectionModal from "./SectionModal";
 const moment = extendMoment(Moment);
+
+export function SectionButton1(props: {section: Course}) {
+  const [modalOpen, setModalOpen] = React.useState<boolean>(false);
+
+  const closeModal = () => setModalOpen(false);
+
+  return (
+      <div>
+          <Button variant="link" style={{width: "100%", paddingLeft: "8px"}} onClick={async () => {setModalOpen(true);}}>
+              {props.section.id} - {props.section.crn} - {props.section.type} - {props.section.instructor}
+          </Button>
+          <SectionModal isOpen={modalOpen} onHide={closeModal} section={props.section}/>
+      </div>
+  );
+}
 
 export default function Schedule() {
   const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
@@ -364,10 +380,7 @@ export default function Schedule() {
                 }}
                 className="border-secondary rounded border p-2"
               >
-                <p style={{ paddingLeft: "8px" }}>
-                  {course.id} - {course.crn} - {course.type} -{" "}
-                  {course.instructor}
-                </p>
+                <SectionButton1 section={course} />
                 <Button
                   variant="text"
                   style={{

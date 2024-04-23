@@ -66,12 +66,12 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                 <p><strong>Instructors:</strong></p>
                 <ul className="m-0">
                     {props.section.instructor != null && props.section.instructor.split(", ").map((instructor: string) => {
-                        if (profs.filter((prof: Professor) => prof.name == instructor).length > 0) {
+                        if (profs !== undefined && profs.filter((prof: Professor) => prof.name == instructor).length > 0) {
                             const prof = profs.filter((prof: Professor) => prof.name == instructor)[0];
-                            return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/professor/${prof.id}`} rel="noreferrer" target="_blank">(RateMyProfessors Rating: {prof.rating}/5)</a>}</li>
+                            return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/professor/${prof.id}`} rel="noreferrer" target="_blank">(RateMyProfessors Rating: {prof.rating}/5)</a>}</li>;
                         }
                         else
-                            return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/search/professors/1441?q=${instructor}`} rel="noreferrer" target="_blank">(Search on RateMyProfessors)</a>}</li>
+                            return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/search/professors/1441?q=${instructor}`} rel="noreferrer" target="_blank">(Search on RateMyProfessors)</a>}</li>;
                     })}
                 </ul>
                 <p><strong>Times:</strong></p>
