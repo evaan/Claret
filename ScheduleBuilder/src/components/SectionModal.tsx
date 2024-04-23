@@ -70,7 +70,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                             return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/professor/${prof.id}`} rel="noreferrer" target="_blank">(RateMyProfessors Rating: {prof.rating}/5)</a>}</li>;
                         }
                         else
-                            return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/search/professors/1441?q=${instructor}`} rel="noreferrer" target="_blank">(Search on RateMyProfessors)</a>}</li>;
+                            return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/search/professors/1441?q=${instructor.replace(/\s[A-Za-z]\.\s/g, ' ')}`} rel="noreferrer" target="_blank">(Search on RateMyProfessors)</a>}</li>;
                     })}
                 </ul>
                 <p><strong>Times:</strong></p>
