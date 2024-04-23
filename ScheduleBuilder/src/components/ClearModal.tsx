@@ -1,5 +1,4 @@
 import { useAtom } from "jotai";
-import React from "react";
 import { Button, Modal, ModalHeader, ModalFooter } from "react-bootstrap";
 import { selectedCoursesAtom, selectedSemesterAtom } from "../api/atoms";
 

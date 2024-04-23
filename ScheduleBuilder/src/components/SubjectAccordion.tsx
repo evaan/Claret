@@ -1,4 +1,3 @@
-import React from "react";
 import { Accordion } from "react-bootstrap";
 import { coursesAtom, filterAtom, searchQueryAtom, selectedTabAtom } from "../api/atoms";
 import { useAtom } from "jotai";

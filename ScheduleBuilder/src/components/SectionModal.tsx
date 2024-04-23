@@ -1,4 +1,3 @@
-import React from "react";
 import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from "react-bootstrap";
 import { Course, Professor, Seating, Time } from "../api/types";
 import { useAtom } from "jotai";

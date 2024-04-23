@@ -1,5 +1,4 @@
 import { useAtom } from "jotai";
-import React from "react";
 import { Form } from "react-bootstrap";
 import { searchQueryAtom } from "../api/atoms";
 
