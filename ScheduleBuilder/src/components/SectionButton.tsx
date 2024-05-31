@@ -14,7 +14,7 @@ export function SectionButton(props: {section: Course}) {
 
     return (
         <div>
-            <Button variant={props.section.type == "Laboratory" ? "outline-primary" : "primary"} style={{width: "100%", marginBottom: "4px"}} onClick={async () => {setModalOpen(true);}}>
+            <Button variant={props.section.type == "Laboratory" ? "outline-primary" : "primary"} style={{width: "100%", marginBottom: "4px", color: "#fff"}} onClick={async () => {setModalOpen(true);}}>
                 {props.section.dateRange !== null ? `${props.section.type} - ${tmp} ${!props.section.type.includes("Laboratory") ? "- " + props.section.instructor : ""}` : `No Information, Section: ${props.section.section}`}
             </Button>
             <SectionModal isOpen={modalOpen} onHide={closeModal} section={props.section}/>

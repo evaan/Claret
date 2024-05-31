@@ -1,8 +1,40 @@
 body {
     font-family: "Montserrat";
 }
-h1 {
+h1, a.fc-col-header-cell-cushion {
+    color: #A8415B;
+}
+.form-check-input:checked {
+    background-color: #A8415B;
+    border-color: #A8415B;
+}
+.accordion-button[aria-expanded="true"] {
+    background-color: #863449;
     color: #fff;
+    border: 0;
+}
+.accordion-button::after {
+    filter: brightness(0) invert(1)
+}
+.btn-primary, .btn-outline-primary {
+    border-color: #A8415B;
+}
+.btn-primary {
+    background-color: #A8415B;
+}
+.btn-primary:hover, .btn-outline-primary:hover {
+   border-color: #A8415B;
+   background-color: #973A52;
+   box-shadow: unset;
+}
+.accordion-button:focus {
+    box-shadow: unset;
+}
+.accordion-button::after > * {
+    color: #fff;
+}
+body, input.form-control, select, div.accordion-body, button.accordion-button[aria-expanded="false"], table.fc-col-header, div.modal-header, div.modal-footer, div.modal-body {
+    background-color: #222 !important;
 }
 p {
     margin-bottom: 0;
@@ -10,9 +42,12 @@ p {
 td.fc-day-today {
     background-color: unset !important;
 }
-table.fc-col-header {
-    background-color: #212529 !important;
-}
 .fc-time-grid .fc-slats td {
     height: 1em;
+}
+.modal-header {
+    border-bottom: 0 none;
+}
+.modal-footer {
+    border-top: 0 none;
 }
