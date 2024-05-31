@@ -23,11 +23,16 @@ h1, a.fc-col-header-cell-cushion {
     background-color: #A8415B;
 }
 .btn-primary:hover, .btn-outline-primary:hover {
-   border-color: #A8415B;
-   background-color: #973A52;
+   border-color: #A8415B !important;
+   background-color: #973A52 !important;
    box-shadow: unset;
 }
-.accordion-button:focus {
+.btn-primary:active, .btn-outline-primary:active {
+    background-color: #8F374D !important;
+    border-color: #973A52 !important;
+    box-shadow: unset;
+}
+.accordion-button:focus, .accordion-button:active {
     box-shadow: unset;
 }
 .accordion-button::after > * {
