@@ -347,6 +347,7 @@ export default function Schedule() {
             .add(weekend ? 2 : 1, "days")
             .format("YYYY-MM-DD"),
         }}
+        eventColor="#A8415B"
       />
       {overlapping && (
         <div className="bg-warning text-dark my-2 rounded p-3">
