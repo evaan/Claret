@@ -89,11 +89,6 @@ type Seating struct {
 	Semester   Semester `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
-type ScrapedViewOnly struct {
-	Scraped  bool
-	ViewOnly bool
-}
-
 var db *gorm.DB
 var logger *log.Logger
 var replaceMap map[string]string
@@ -224,6 +219,10 @@ func processCourse(title []string, body []string, semester int, subject string) 
 	}
 
 	var typesStr = strings.Join(types, ", ")
+
+	if strings.Contains(subject, "Engineer") {
+		engSeating(semester, title[len(title)-3], subject, title[len(title)-2], title[len(title)-1], strings.Join(title[:len(title)-3], " - "))
+	}
 
 	if timeStartLine != 0 {
 		db.Save(&Course{
@@ -465,6 +464,7 @@ func main() {
 	db.AutoMigrate(&Professor{})
 	db.AutoMigrate(&ProfAndSemester{})
 	db.AutoMigrate(&ExamTime{})
+	db.AutoMigrate(&EngSeats{})
 	logger.Println("💾 Migrated Schemas!")
 
 	if slices.Contains(os.Args, "--rmp") {
