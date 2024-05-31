@@ -20,8 +20,6 @@ var logger *log.Logger
 var err error
 var loc *time.Location
 
-//TODO MAKE IT SO WHEN THERES AN ERROR IT DOESNT CAUSE NULL POINTER
-
 type Semester struct {
 	ID       int    `json:"id"`
 	Name     string `json:"name"`
