@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource/sen": "^5.0.20",
+    "@fontsource/montserrat": "^5.0.18",
     "@fullcalendar/core": "^6.1.11",
     "@fullcalendar/react": "^6.1.11",
     "@fullcalendar/timegrid": "^6.1.11",
