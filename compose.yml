@@ -18,12 +18,8 @@ services:
 
   nginx:
     container_name: nginx
-    build:
-      context: .
-      dockerfile: WebServer.Dockerfile
+    build: ./ScheduleBuilder
     restart: always
-    environment:
-      - API_URL=https://api.evaan.dev
     labels:
       - traefik.enable=true
       - traefik.port=80
@@ -40,12 +36,10 @@ services:
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
 
-  claretapi:
-    container_name: claretAPI
+  api:
+    container_name: api
     restart: always
-    build:
-      context: .
-      dockerfile: API.Dockerfile
+    build: ./API
     depends_on:
       - postgres
     ports:
@@ -61,12 +55,10 @@ services:
       - traefik.http.routers.api.entrypoints=websecure
       - traefik.http.routers.api.tls=true
 
-  claretscraper:
-    container_name: claretScraper
+  scraper:
+    container_name: scraper
     restart: always
-    build:
-      context: .
-      dockerfile: Scraper.Dockerfile
+    build: ./Scraper
     depends_on:
       - postgres
     environment:
@@ -77,9 +69,7 @@ services:
   icsserver:
     container_name: icsServer
     restart: always
-    build:
-      context: .
-      dockerfile: ICSServer.Dockerfile
+    build: ./ICSServer
     depends_on:
       - postgres
     ports:
