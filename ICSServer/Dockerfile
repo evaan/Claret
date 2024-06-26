@@ -1,7 +1,7 @@
 # Build Stage Container
 FROM golang:1.21.5 AS build-stage
 WORKDIR /app
-COPY ./ICSServer /app
+COPY . /app
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o /ics_server
 

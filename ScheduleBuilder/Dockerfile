@@ -1,5 +1,5 @@
 FROM node:alpine as build-stage
-COPY ScheduleBuilder /app
+COPY . /app
 WORKDIR /app/ScheduleBuilder
 RUN npm install
 RUN npm run build
