@@ -4,7 +4,7 @@ body {
 h1, a.fc-col-header-cell-cushion {
     color: #A8415B;
 }
-.form-check-input:checked {
+.form-check-input:checked, select {
     background-color: #A8415B;
     border-color: #A8415B;
 }
@@ -16,26 +16,36 @@ h1, a.fc-col-header-cell-cushion {
 .accordion-button::after {
     filter: brightness(0) invert(1)
 }
-.btn-primary, .btn-outline-primary {
-    border-color: #A8415B;
-}
 .btn-primary {
-    background-color: #A8415B;
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #A8415B;
+    --bs-btn-border-color: #A8415B;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #A8415B;
+    --bs-btn-hover-border-color: #973A52;
+    --bs-btn-focus-shadow-rgb: unset;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #8F374D;
+    --bs-btn-active-border-color: #973A52;
+    --bs-btn-active-shadow: unset;
+    --bs-btn-disabled-color: #fff;
+    --bs-btn-disabled-bg: #622635;
+    --bs-btn-disabled-border-color: #6D2A3B
 }
-.btn-primary[disabled] {
-    border-color: #6D2A3B !important;
-    background-color: #622635 !important;
-    box-shadow: unset;
-}
-.btn-primary:hover, .btn-outline-primary:hover {
-   border-color: #A8415B !important;
-   background-color: #973A52 !important;
-   box-shadow: unset;
-}
-.btn-primary:active, .btn-outline-primary:active {
-    background-color: #8F374D !important;
-    border-color: #973A52 !important;
-    box-shadow: unset;
+.btn-outline-primary {
+    --bs-btn-color: #fff;
+    --bs-btn-border-color: #A8415B;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #A8415B;
+    --bs-btn-hover-border-color: #973A52;
+    --bs-btn-focus-shadow-rgb: unset;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #8F374D;
+    --bs-btn-active-border-color: #973A52;
+    --bs-btn-active-shadow: unset;
+    --bs-btn-disabled-color: #fff;
+    --bs-btn-disabled-bg: #622635;
+    --bs-btn-disabled-border-color: #6D2A3B
 }
 .accordion-button:focus, .accordion-button:active {
     box-shadow: unset;
@@ -43,7 +53,7 @@ h1, a.fc-col-header-cell-cushion {
 .accordion-button::after > * {
     color: #fff;
 }
-body, input.form-control, select, div.accordion-body, button.accordion-button[aria-expanded="false"], table.fc-col-header, div.modal-header, div.modal-footer, div.modal-body {
+body, input.form-control, select, div.accordion-collapse, button.accordion-button[aria-expanded="false"], table.fc-col-header, div.modal-header, div.modal-footer, div.modal-body {
     background-color: #222 !important;
 }
 p {
@@ -60,4 +70,8 @@ td.fc-day-today {
 }
 .modal-footer {
     border-top: 0 none;
+}
+input:focus, select:focus {
+    border-color: #A8415B !important;
+    box-shadow: 0 0 0 0.25rem rgba(176.8, 44.8, 78.1, 0.325) !important;
 }

@@ -505,7 +505,7 @@ func seating(w http.ResponseWriter, r *http.Request) {
 					seating.Waitlist = nil
 				}
 			}
-			checkedTime, err := strftime.Format("%Y-%m-%dT%H:%M", time.Now())
+			checkedTime, err := strftime.Format("%Y-%m-%dT%H:%M", time.Now().UTC())
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte(err.Error()))
