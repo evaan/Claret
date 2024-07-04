@@ -358,6 +358,7 @@ func scrape() {
 			//NOTE: this will warn about slow sql, this can safely be ignored
 			db.Where("id = ?", semester.ID).Delete(&Semester{})
 			db.Save(&semester)
+			exams(semester.ID)
 			for _, subject := range processSemester(semester.ID) {
 				logger.Println("	📝 Processing " + subject.FriendlyName + " (" + subject.Name + ")")
 				processSubject(subject, semester.ID, "")
@@ -462,6 +463,7 @@ func main() {
 	db.AutoMigrate(&Seating{})
 	db.AutoMigrate(&Professor{})
 	db.AutoMigrate(&ProfAndSemester{})
+	db.AutoMigrate(&ExamTime{})
 	logger.Println("💾 Migrated Schemas!")
 
 	if slices.Contains(os.Args, "--rmp") {
