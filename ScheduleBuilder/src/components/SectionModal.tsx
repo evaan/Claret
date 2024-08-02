@@ -85,7 +85,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                     }
                     return (
                         <div key={seating.crn}>
-                            <p><strong>Seats Available:</strong> <span className={seating.available == "0" ? "text-danger" : ""}>{seating.available}/{seating.max}</span></p>
+                            <p><strong>Seats Available:</strong> <span className={Number(seating.available) <= 0 ? "text-danger" : ""}>{seating.available}/{seating.max}</span></p>
                             <p><strong>Waitlist:</strong> {seating.waitlist}</p>
                             <p><strong>Last Checked:</strong> {moment.utc(seating.checked).fromNow().replace("Invalid date", "Never")} <Button variant="link" style={{padding: "0"}} disabled={moment(seating.checked).isAfter(moment().subtract(5, "minutes"))} onClick={async () => await updateSeatings(props.section.crn, props.section.semester)}>(Update)</Button></p>
                         </div>
