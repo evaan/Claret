@@ -1,14 +1,14 @@
 import { Button, Modal, ModalBody, ModalHeader, InputGroup, Form, CloseButton } from "react-bootstrap";
-import { selectedCoursesAtom } from "../api/atoms";
+import { selectedCoursesAtom, selectedSemesterAtom } from "../api/atoms";
 import { useAtom } from "jotai";
 import { useState } from "react";
 
 export default function ICalModal(props: { isOpen: boolean; onHide: () => void }) {
     const selectedCourses = useAtom(selectedCoursesAtom)[0];
-    
+    const [selectedSemester] = useAtom(selectedSemesterAtom);
     const generateiCalURL = () => {
         const crnString: string = selectedCourses.map(obj => obj.crn).join(",");
-        return "https://ics.claretformun.com/feed.ics?crn=" + crnString;
+        return `https://ics.claretformun.com/feed.ics?semester=${selectedSemester?.id}&crn=${crnString}`;
     };
     
     const copyURL = () => {
