@@ -17,12 +17,14 @@ func ics(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	query_crn := r.URL.Query().Get("crn")
+	query_semester := r.URL.Query().Get("semester")
 
 	if query_crn == "" {
 		rows, err = db.Query("SELECT courses.semester, times.crn, courses.id, courses.name, courses.\"dateRange\", times.days, times.\"startTime\", times.\"endTime\", times.location FROM times JOIN courses ON times.crn = courses.crn")
 	} else {
 		query_crn_split := strings.Split(query_crn, ",")
-		rows, err = db.Query("SELECT courses.semester, times.crn, courses.id, courses.name, courses.\"dateRange\", times.days, times.\"startTime\", times.\"endTime\", times.location FROM times JOIN courses ON times.crn = courses.crn WHERE courses.crn = ANY($1);", query_crn_split)
+		for i := range query_crn_split { query_crn_split[i] = query_semester + query_crn_split[i] }
+		rows, err = db.Query(`select courses.id, courses.name, courses."dateRange", times.days, times."startTime", times."endTime", times.location from courses join times on courses.identifier = times.identifier where courses.identifier = any($1);`, query_crn_split)
 	}
 
 	if err != nil {
@@ -52,8 +54,6 @@ func ics(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var (
-			semester   string
-			crn        string
 			id         string
 			name       string
 			date_range string
@@ -63,7 +63,7 @@ func ics(w http.ResponseWriter, r *http.Request) {
 			location   string
 		)
 
-		err := rows.Scan(&semester, &crn, &id, &name, &date_range, &days, &start, &end, &location)
+		err := rows.Scan(&id, &name, &date_range, &days, &start, &end, &location)
 		if err != nil {
 			logger.Println(err)
 
@@ -94,13 +94,13 @@ func ics(w http.ResponseWriter, r *http.Request) {
 			dt_end := time.Date(first_event_date.Year(), first_event_date.Month(), first_event_date.Day(), end_time.Hour(), end_time.Minute(), end_time.Second(), end_time.Nanosecond(), first_event_date.Location())
 
 			out_buf.Write([]byte("BEGIN:VEVENT\r\n"))
-			out_buf.Write([]byte("UID:" + crn + day + dt_start.Format(ICAL_DATE_TIME_LOCAL_FORM) + dt_end.Format(ICAL_DATE_TIME_LOCAL_FORM) + "@claret-cal-uid.evanvokey.com" + "\r\n"))
+			out_buf.Write([]byte("UID:" + day + dt_start.Format(ICAL_DATE_TIME_LOCAL_FORM) + dt_end.Format(ICAL_DATE_TIME_LOCAL_FORM) + "@claret-cal-uid.evanvokey.com" + "\r\n"))
 			out_buf.Write([]byte("SUMMARY:" + id + " - " + name + "\r\n"))
-			out_buf.Write([]byte("DESCRIPTION:No Event Description" + semester + "\r\n"))
+			out_buf.Write([]byte("DESCRIPTION:No Event Description" + "\r\n"))
 			out_buf.Write([]byte("LOCATION:" + location + "\r\n"))
 
-			out_buf.Write([]byte("DTSTART;TZID=" + dt_start.Location().String() + ":" + dt_start.Format(ICAL_DATE_TIME_LOCAL_FORM) + "\r\n"))
-			out_buf.Write([]byte("DTEND;TZID=" + dt_end.Location().String() + ":" + dt_end.Format(ICAL_DATE_TIME_LOCAL_FORM) + "\r\n"))
+			out_buf.Write([]byte("DTSTART;TZID=/" + dt_start.Location().String() + ":" + dt_start.Format(ICAL_DATE_TIME_LOCAL_FORM) + "\r\n"))
+			out_buf.Write([]byte("DTEND;TZID=/" + dt_end.Location().String() + ":" + dt_end.Format(ICAL_DATE_TIME_LOCAL_FORM) + "\r\n"))
 
 			out_buf.Write([]byte("RRULE:FREQ=WEEKLY;UNTIL=" + end_reccurence_date.UTC().Format(ICAL_DATE_TIME_LOCAL_FORM) + "Z	\r\n"))
 			out_buf.Write([]byte("DTSTAMP;TZID=" + time.Now().Location().String() + ":" + time.Now().Format(ICAL_DATE_TIME_LOCAL_FORM) + "\r\n"))
