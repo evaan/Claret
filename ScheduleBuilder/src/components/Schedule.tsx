@@ -411,7 +411,7 @@ export default function Schedule() {
           <Accordion.Header>Sharing/Exporting</Accordion.Header>
           <Accordion.Body>
             <Button
-              className="w-100 mt-3"
+              className="w-100"
               onClick={() => setModalOpen(true)}
               disabled={selectedCourses.length == 0}
             >
@@ -430,6 +430,15 @@ export default function Schedule() {
                 : isCopied
                   ? "Copied!"
                   : "Copy Claret link to clipboard"}
+            </Button>
+            <Button
+              className="w-100 mt-2"
+              onClick={() => setModalOpen(true)}
+              disabled={selectedCourses.length == 0}
+            >
+              {selectedCourses.length == 0
+                ? "View final exam schedule (no courses selected)"
+                : "View final exam schedule"}
             </Button>
           </Accordion.Body>
         </Accordion.Item>

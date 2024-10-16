@@ -365,6 +365,7 @@ func scrape() {
 			}
 			semester.Scraped = true
 			db.Save(&semester)
+			exams(semester.ID)
 		}
 	}
 
@@ -468,6 +469,12 @@ func main() {
 
 	if slices.Contains(os.Args, "--rmp") {
 		rmp()
+		os.Exit(0)
+	}
+	if slices.Contains(os.Args, "--exam") {
+		for _, semester := range getSemesters() {
+			exams(semester.ID)
+		}
 		os.Exit(0)
 	}
 	scrape()
