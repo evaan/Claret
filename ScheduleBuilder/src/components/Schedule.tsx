@@ -11,9 +11,10 @@ import { Course, Time } from "../api/types";
 import Moment from "moment";
 import { extendMoment } from "moment-range";
 import { Accordion, Button } from "react-bootstrap";
-import ICalModal from "./ICalModal";
 import ClearModal from "./ClearModal";
 import SectionModal from "./SectionModal";
+import ICalModal from "./ICalModal";
+import ExamModal from "./ExamModal";
 const moment = extendMoment(Moment);
 
 export function SectionButton1(props: {section: Course}) {
@@ -35,8 +36,11 @@ export default function Schedule() {
   const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
   const [times] = useAtom(timesAtom);
 
-  const [modalOpen, setModalOpen] = React.useState<boolean>(false);
-  const closeModal = () => setModalOpen(false);
+  const [calModalOpen, setCalModalOpen] = React.useState<boolean>(false);
+  const closeCalModal = () => setCalModalOpen(false);
+
+  const [examModalOpen, setExamModalOpen] = React.useState<boolean>(false);
+  const closeExamModal = () => setExamModalOpen(false);
 
   const [clearModalOpen, setClearModalOpen] = React.useState<boolean>(false);
   const closeClearModal = () => setClearModalOpen(false);
@@ -412,14 +416,14 @@ export default function Schedule() {
           <Accordion.Body>
             <Button
               className="w-100"
-              onClick={() => setModalOpen(true)}
+              onClick={() => setCalModalOpen(true)}
               disabled={selectedCourses.length == 0}
             >
               {selectedCourses.length == 0
                 ? "Subscribe to Calendar (No courses selected)"
                 : "Subscribe to Calendar"}
             </Button>
-            <ICalModal isOpen={modalOpen} onHide={closeModal} />
+            <ICalModal isOpen={calModalOpen} onHide={closeCalModal} />
             <Button
               className="w-100 mt-2"
               onClick={copySharingURL}
@@ -431,9 +435,10 @@ export default function Schedule() {
                   ? "Copied!"
                   : "Copy Claret link to clipboard"}
             </Button>
+            <ExamModal isOpen={examModalOpen} onHide={closeExamModal} />
             <Button
               className="w-100 mt-2"
-              onClick={() => setModalOpen(true)}
+              onClick={() => setExamModalOpen(true)}
               disabled={selectedCourses.length == 0}
             >
               {selectedCourses.length == 0
