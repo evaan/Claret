@@ -1,9 +1,9 @@
 import { Accordion, Col, Form, Row } from "react-bootstrap";
 import React from "react";
 import SubjectAccordion from "./components/SubjectAccordion";
-import { coursesAtom, filterAtom, profsAtom, searchQueryAtom, seatingAtom, selectedCoursesAtom, selectedSemesterAtom, selectedTabAtom, subjectsAtom, timesAtom } from "./api/atoms";
+import { coursesAtom, examsAtom, filterAtom, profsAtom, searchQueryAtom, seatingAtom, selectedCoursesAtom, selectedSemesterAtom, selectedTabAtom, subjectsAtom, timesAtom } from "./api/atoms";
 import { useAtom } from "jotai";
-import { Course, Professor, Seating, Semester, Subject, Time } from "./api/types";
+import { Course, ExamTime, Professor, Seating, Semester, Subject, Time } from "./api/types";
 import Schedule from "./components/Schedule";
 import { shouldShow } from "./api/functions";
 import SearchBar from "./components/SearchBar";
@@ -14,6 +14,7 @@ export default function App() {
     const [, setTimes] = useAtom(timesAtom);
     const [, setSeating] = useAtom(seatingAtom);
     const [, setProfs] = useAtom(profsAtom);
+    const [, setExams] = useAtom(examsAtom);
     const [filters, setFilters] = useAtom(filterAtom);
     const [selectedTab, setSelectedTab] = useAtom(selectedTabAtom);
     const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
@@ -36,12 +37,13 @@ export default function App() {
 
     React.useEffect(() => {
         if (selectedSemester == null) return;
-        fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/all?semester=" + selectedSemester.id).then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[], profs: Professor[]}) => {
+        fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/all?semester=" + selectedSemester.id).then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[], profs: Professor[], exams: ExamTime[]}) => {
             setSubjects(data.subjects);
             setCourses(data.courses);
             setTimes(data.times);
             setSeating(data.seatings);
             setProfs(data.profs);
+            setExams(data.exams);
             const crnsParam = new URLSearchParams(window.location.search).get("crns")?.split(",");
             const newCourses: Course[] = [];
             if (crnsParam !== undefined) {
