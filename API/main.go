@@ -20,8 +20,6 @@ var logger *log.Logger
 var err error
 var loc *time.Location
 
-//TODO MAKE IT SO WHEN THERES AN ERROR IT DOESNT CAUSE NULL POINTER
-
 type Semester struct {
 	ID       int    `json:"id"`
 	Name     string `json:"name"`
@@ -82,6 +80,14 @@ type Professor struct {
 	Difficulty  float64 `json:"difficulty"`
 	RatingCount int     `json:"ratings"`
 	WouldRetake float64 `json:"wouldRetake"`
+}
+
+type ExamTime struct {
+	Id       string `json:"id"`
+	Section  string `json:"section"`
+	Crn      string `json:"crn"`
+	Time     string `json:"time"`
+	Location string `json:"location"`
 }
 
 func all(w http.ResponseWriter, r *http.Request) {
@@ -224,6 +230,33 @@ func all(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+	if r.URL.Query().Get("semester") == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Semester was not provided, please add ?semester={semester} in your URL."))
+		return
+	}
+
+	examTimes, err := db.Query("SELECT DISTINCT e.crn, e.location, e.time, c.id, c.section FROM exam_times e JOIN courses c ON c.crn = e.crn AND c.semester = e.semester WHERE e.semester = $1", r.URL.Query().Get("semester"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	defer examTimes.Close()
+
+	for examTimes.Next() {
+		var examTime ExamTime
+
+		err := examTimes.Scan(&examTime.Crn, &examTime.Location, &examTime.Time, &examTime.Id, &examTime.Section)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		output["exams"] = append(output["exams"], examTime)
+	}
+
 	jsonString, err := json.Marshal(output)
 	if err != nil {
 		logger.Fatal(err)
@@ -323,7 +356,7 @@ func courses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	courses, err := db.Query("SELECT crn, id, name, section, \"dateRange\", type, instructor, subject, \"subjectFull\", campus, comment, credits, semester, level, identifier FROM courses WHERE courses.crn LIKE $1", "%"+r.URL.Query().Get("id")+"%")
+	courses, err := db.Query("SELECT crn, id, name, section, \"dateRange\", type, instructor, subject, \"subjectFull\", campus, comment, credits, semester, level, identifier FROM courses WHERE courses.semester = $1 AND courses.crn LIKE $2", r.URL.Query().Get("semester"), "%"+r.URL.Query().Get("id")+"%")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
@@ -552,8 +585,50 @@ func seating(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(jsonString))
 }
 
+func exams(w http.ResponseWriter, r *http.Request) {
+	var output []ExamTime
+
+	if r.URL.Query().Get("semester") == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Semester was not provided, please add ?semester={semester} in your URL."))
+		return
+	}
+
+	examTimes, err := db.Query("SELECT DISTINCT e.crn, e.location, e.time, c.id, c.section FROM exam_times e JOIN courses c ON c.crn = e.crn AND c.semester = e.semester WHERE e.semester = $1 AND ($2 = '' OR c.crn = $2)", r.URL.Query().Get("semester"), r.URL.Query().Get("crn"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	defer examTimes.Close()
+
+	for examTimes.Next() {
+		var examTime ExamTime
+
+		err := examTimes.Scan(&examTime.Crn, &examTime.Location, &examTime.Time, &examTime.Id, &examTime.Section)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		output = append(output, examTime)
+	}
+
+	course, err := json.Marshal(output)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(course))
+}
+
 func index(w http.ResponseWriter, _ *http.Request) {
-	w.Write([]byte("<p>values in square brackets are optional, while curly brackets are mandatory</p><p><strong>/all?semester=[semester]</strong> - get <strong>all</strong> data of a semester, or if no semester is provided return <strong>every</strong> semester combined (will be >60MB of raw JSON)</p><p><strong>/subjects?semester=[semester]</strong> - return a list of all subjects from a semester, or all semesters if none is provided</p><p><strong>/semesters</strong> - return a list of all semesters</p><p><strong>/courses?semester={semester}&id=[id]</strong> - return a list of all courses from a semester that contains crn, if no crn is provided it will return all courses</p><p><strong>/times?semester={semester}&crn={crn}</strong> - return a list of all times for a certain course slot</p><p><strong>/seating?semester={semester}&crn={crn}</strong> - scrapes muns course offering for seatings, then returns them</p><p><strong>/rmp?name=[name]</strong> - returns all mun rate my prof ratings, or a search for a specific name"))
+	w.Write([]byte("<p>values in square brackets are optional, while braces are mandatory</p><p><strong>/all?semester=[semester]</strong> - get <strong>all</strong> data of a semester, or if no semester is provided return <strong>every</strong> semester combined (will be >60MB of raw JSON)</p><p><strong>/subjects?semester=[semester]</strong> - return a list of all subjects from a semester, or all semesters if none is provided</p><p><strong>/semesters</strong> - return a list of all semesters</p><p><strong>/courses?semester={semester}&id=[id]</strong> - return a list of all courses from a semester that contains crn, if no crn is provided it will return all courses</p><p><strong>/times?semester={semester}&crn={crn}</strong> - return a list of all times for a certain course slot</p><p><strong>/seating?semester={semester}&crn={crn}</strong> - scrapes muns course offering for seatings, then returns them</p><p><strong>/rmp?name=[name]</strong> - returns all mun rate my prof ratings, or a search for a specific name"))
 }
 
 func main() {
@@ -595,6 +670,7 @@ func main() {
 	http.HandleFunc("/times", times)
 	http.HandleFunc("/seating", seating)
 	http.HandleFunc("/rmp", rmp)
+	http.HandleFunc("/exams", exams)
 
 	logger.Println("✅ API running server on port", PORT)
 	http.ListenAndServe(":"+PORT, nil)

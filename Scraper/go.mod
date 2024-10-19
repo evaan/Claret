@@ -1,4 +1,4 @@
-module ClaretScraper
+module Scraper
 
 go 1.20
 

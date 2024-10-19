@@ -75,3 +75,8 @@ input:focus, select:focus {
     border-color: #A8415B !important;
     box-shadow: 0 0 0 0.25rem rgba(176.8, 44.8, 78.1, 0.325) !important;
 }
+@media (min-width: 768px) {
+    .examModal {
+        max-width: 80vw;
+    }
+}

@@ -58,3 +58,11 @@ export interface Professor {
     ratings: number;
     wouldRetake: number;
 }
+
+export interface ExamTime {
+    id: string;
+    section: string;
+    crn: string;
+    time: string;
+    location: string;
+}
