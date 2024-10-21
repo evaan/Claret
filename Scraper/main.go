@@ -160,7 +160,7 @@ func processSemester(semester int) []Subject {
 	return subjects
 }
 
-func processCourse(title []string, body []string, semester int, subject string) {
+func processCourse(title []string, body []string, semester int, subject string, viewOnly bool) {
 	var campus string
 	var credits int
 	var comment *string
@@ -220,7 +220,7 @@ func processCourse(title []string, body []string, semester int, subject string) 
 
 	var typesStr = strings.Join(types, ", ")
 
-	if strings.Contains(subject, "Engineer") {
+	if strings.Contains(subject, "Engineer") && !viewOnly {
 		engSeating(semester, title[len(title)-3], subject, title[len(title)-2], title[len(title)-1], strings.Join(title[:len(title)-3], " - "))
 	}
 
@@ -303,7 +303,7 @@ func processCourse(title []string, body []string, semester int, subject string) 
 	db.Save(&Seating{Identifier: strconv.Itoa(semester) + title[len(title)-3], Crn: title[len(title)-3], Available: 0, Max: 0, Waitlist: 0, Checked: "Never", SemesterID: semester})
 }
 
-func processSubject(subject Subject, semester int, course string) {
+func processSubject(subject Subject, semester int, course string, viewOnly bool) {
 	c := colly.NewCollector()
 
 	var courses []*goquery.Selection
@@ -321,7 +321,7 @@ func processSubject(subject Subject, semester int, course string) {
 
 	if len(courses) == 101 && course == "" {
 		for i := 1; i <= 9; i++ {
-			processSubject(subject, semester, strconv.Itoa(i))
+			processSubject(subject, semester, strconv.Itoa(i), viewOnly)
 		}
 		return
 	}
@@ -334,7 +334,7 @@ func processSubject(subject Subject, semester int, course string) {
 				body = append(body, line)
 			}
 		}
-		processCourse(strings.Split(course.Text(), " - "), body, semester, subject.FriendlyName)
+		processCourse(strings.Split(course.Text(), " - "), body, semester, subject.FriendlyName, viewOnly)
 	}
 }
 
@@ -360,7 +360,7 @@ func scrape() {
 			exams(semester.ID)
 			for _, subject := range processSemester(semester.ID) {
 				logger.Println("	📝 Processing " + subject.FriendlyName + " (" + subject.Name + ")")
-				processSubject(subject, semester.ID, "")
+				processSubject(subject, semester.ID, "", semester.ViewOnly)
 			}
 			semester.Scraped = true
 			db.Save(&semester)

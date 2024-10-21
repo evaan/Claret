@@ -11,12 +11,13 @@ import (
 
 type EngSeats struct {
 	Id         int    `gorm:"autoIncrement"`
-	Subject    string `gorm:"notNull"`
-	Name       string `gorm:"notNull"`
-	Course     string `gorm:"notNull"`
-	Section    string `gorm:"notNull"`
-	Registered int    `gorm:"notNull"`
-	Date       string `gorm:"notNull"`
+	Subject    string `gorm:"not null"`
+	Name       string `gorm:"not null"`
+	Course     string `gorm:"not null"`
+	Section    string `gorm:"not null"`
+	Registered int    `gorm:"not null"`
+	Date       string `gorm:"not null"`
+	Semester   int    `gorm:"not null"`
 }
 
 func engSeating(semester int, crn string, subject string, id string, section string, name string) {
@@ -59,5 +60,6 @@ func engSeating(semester int, crn string, subject string, id string, section str
 		Section:    section,
 		Registered: max - available,
 		Date:       fmt.Sprintf("%d-%d-%d", time.Now().Day(), time.Now().Month(), time.Now().Year()),
+		Semester:   semester,
 	})
 }
