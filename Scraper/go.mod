@@ -1,6 +1,6 @@
 module Scraper
 
-go 1.23
+go 1.23.14
 
 require (
 	github.com/PuerkitoBio/goquery v1.9.1
