@@ -23,7 +23,7 @@ jobs:
 
     - name: Build
       working-directory: Scraper/
-      run: go build -v
+      run: go build -v ./...
 
     # - name: Test
     #   run: go test -v ./...
