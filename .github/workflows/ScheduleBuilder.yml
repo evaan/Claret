@@ -26,4 +26,4 @@ jobs:
 
     - name: Build
       working-directory: ScheduleBuilder/
-      run: npm build
+      run: npm run build
