@@ -9,25 +9,21 @@ on:
   pull_request:
     branches: [ "main" ]
 
-defaults:
-  run:
-    working-directory: ScheduleBuilder/
-
 jobs:
-
   build:
-    name: build
     runs-on: ubuntu-latest
     steps:
-
     - uses: actions/checkout@v4
-      with:
-        path: client
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 22.x
+        node-version: '22.x'
 
-    - run: npm install
+    - name: Install Dependencies
+      working-directory: ScheduleBuilder/
+      run: npm install
 
-    - run: npm build
+    - name: Build
+      working-directory: ScheduleBuilder/
+      run: npm build
