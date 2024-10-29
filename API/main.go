@@ -236,6 +236,8 @@ func all(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	output["exams"] = []any{}
+
 	examTimes, err := db.Query("SELECT DISTINCT e.crn, e.location, e.time, c.id, c.section FROM exam_times e JOIN courses c ON c.crn = e.crn AND c.semester = e.semester WHERE e.semester = $1", r.URL.Query().Get("semester"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
