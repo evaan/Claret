@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"slices"
 	"strings"
 
@@ -45,8 +44,14 @@ type Edge struct {
 	Professor RateMyProfNode `json:"node"`
 }
 
+type PageInfo struct {
+	Cursor      string `json:"endCursor"`
+	HasNextPage bool   `json:"hasNextPage"`
+}
+
 type Teachers struct {
-	Edges []Edge `json:"edges"`
+	Edges []Edge   `json:"edges"`
+	Info  PageInfo `json:"pageInfo"`
 }
 
 type Search struct {
@@ -70,74 +75,88 @@ type MatchedProf struct {
 func rmp() {
 	logger.Println("⭐ RMP Scraping Started!")
 
-	body := []byte(`{"query":"query TeacherSearchResultsPageQuery(\n  $query: TeacherSearchQuery!\n  $schoolID: ID\n  $includeSchoolFilter: Boolean!\n) {\n  search: newSearch {\n    ...TeacherSearchPagination_search_1ZLmLD\n  }\n  school: node(id: $schoolID) @include(if: $includeSchoolFilter) {\n    __typename\n    ... on School {\n      name\n    }\n    id\n  }\n}\n\nfragment TeacherSearchPagination_search_1ZLmLD on newSearch {\n  teachers(query: $query, first: 999999, after: \"\") {\n    didFallback\n    edges {\n      cursor\n      node {\n        ...TeacherCard_teacher\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n    resultCount\n    filters {\n      field\n      options {\n        value\n        id\n      }\n    }\n  }\n}\n\nfragment TeacherCard_teacher on Teacher {\n  id\n  legacyId\n  avgRating\n  numRatings\n  ...CardFeedback_teacher\n  ...CardSchool_teacher\n  ...CardName_teacher\n  ...TeacherBookmark_teacher\n}\n\nfragment CardFeedback_teacher on Teacher {\n  wouldTakeAgainPercent\n  avgDifficulty\n}\n\nfragment CardSchool_teacher on Teacher {\n  department\n  school {\n    name\n    id\n  }\n}\n\nfragment CardName_teacher on Teacher {\n  firstName\n  lastName\n}\n\nfragment TeacherBookmark_teacher on Teacher {\n  id\n  isSaved\n}\n","variables":{"query":{"text":"","schoolID":"U2Nob29sLTE0NDE=","fallback":true,"departmentID":null},"schoolID":"U2Nob29sLTE0NDE=","includeSchoolFilter":true}}`)
+	cursor := "null"
+	hasNextPage := true
 
-	req, err := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(body))
-	req.Header.Add("Authorization", "Basic dGVzdDp0ZXN0")
-	if err != nil {
-		logger.Fatal(err)
-	}
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		logger.Println("❌ RMP Failed scraping due to: " + err.Error())
-		return
-	}
-	defer res.Body.Close()
-
-	resBody, err := io.ReadAll(res.Body)
-	if err != nil {
-		logger.Panic(err)
-	}
-
-	file, _ := os.Create("rmp.json")
-	file.Write(resBody)
-	file.Close()
-
-	var root Root
-	err = json.Unmarshal(resBody, &root)
-	if err != nil {
-		fmt.Println("Error unmarshalling JSON:", err)
-		return
-	}
-
-	var profs []string
-	rows, err := db.Raw("select distinct instructor from courses").Rows()
-	if err != nil {
-		panic(err)
-	}
-	for rows.Next() {
-		var prof sql.NullString
-		rows.Scan(&prof)
-		if prof.Valid && (prof.String != "TBA" && !slices.Contains(profs, prof.String)) {
-			profs = append(profs, strings.Split(prof.String, ", ")...)
-		}
-	}
-
-	var munNames []string
-	var rmpProfs []string
-	rmpMap := make(map[string]Professor)
-
-	for _, edge := range root.Data.Search.Teachers.Edges {
-		if edge.Professor.Ratings > 0 {
-			prof := edge.Professor
-			matchedProf := closestName(profs, prof.FirstName+" "+prof.LastName)
-			if matchedProf.Name != "" {
-				if !slices.Contains(munNames, matchedProf.Name) {
-					munNames = append(munNames, matchedProf.Name)
+	for hasNextPage {
+		body := []byte(fmt.Sprintf(`{
+			"query": "query TeacherSearchPaginationQuery($cursor: String, $query: TeacherSearchQuery!) { search: newSearch { teachers(query: $query, first: 1000, after: $cursor) { didFallback edges { cursor node { ...TeacherCard_teacher id __typename } } pageInfo { hasNextPage endCursor } resultCount filters { field options { value id } } } } } fragment TeacherCard_teacher on Teacher { id legacyId avgRating numRatings ...CardFeedback_teacher ...CardSchool_teacher ...CardName_teacher ...TeacherBookmark_teacher } fragment CardFeedback_teacher on Teacher { wouldTakeAgainPercent avgDifficulty } fragment CardSchool_teacher on Teacher { department school { name id } } fragment CardName_teacher on Teacher { firstName lastName } fragment TeacherBookmark_teacher on Teacher { id isSaved }",
+			"variables": {
+				"cursor": "%s",
+				"query": {
+				"text": "",
+				"schoolID": "U2Nob29sLTE0NDE=",
+				"fallback": true
 				}
-				rmpProfs = append(rmpProfs, prof.FirstName+" "+prof.LastName)
-				rmpMap[prof.FirstName+" "+prof.LastName] = Professor{prof.FirstName + " " + prof.LastName, prof.Rating, prof.LegacyID, prof.Difficulty, prof.Ratings, prof.RetakePercentage}
+			}
+		}`, cursor))
+
+		req, err := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(body))
+		req.Header.Add("Authorization", "Basic dGVzdDp0ZXN0")
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		client := &http.Client{}
+		res, err := client.Do(req)
+		if err != nil {
+			logger.Println("❌ RMP Failed scraping due to: " + err.Error())
+			return
+		}
+		defer res.Body.Close()
+
+		resBody, err := io.ReadAll(res.Body)
+		if err != nil {
+			logger.Panic(err)
+		}
+
+		var root Root
+		err = json.Unmarshal(resBody, &root)
+		if err != nil {
+			fmt.Println("Error unmarshalling JSON:", err)
+			return
+		}
+
+		var profs []string
+		rows, err := db.Raw("select distinct instructor from courses").Rows()
+		if err != nil {
+			panic(err)
+		}
+		for rows.Next() {
+			var prof sql.NullString
+			rows.Scan(&prof)
+			if prof.Valid && (prof.String != "TBA" && !slices.Contains(profs, prof.String)) {
+				profs = append(profs, strings.Split(prof.String, ", ")...)
 			}
 		}
-	}
 
-	for _, prof := range munNames {
-		matchedProf := closestName(rmpProfs, prof)
-		matchedProf1 := rmpMap[matchedProf.Name]
-		matchedProf1.Name = prof
-		db.Save(&matchedProf1)
+		var munNames []string
+		var rmpProfs []string
+		rmpMap := make(map[string]Professor)
+
+		for _, edge := range root.Data.Search.Teachers.Edges {
+			if edge.Professor.Ratings > 0 {
+				prof := edge.Professor
+				matchedProf := closestName(profs, prof.FirstName+" "+prof.LastName)
+				if matchedProf.Name != "" {
+					if !slices.Contains(munNames, matchedProf.Name) {
+						munNames = append(munNames, matchedProf.Name)
+					}
+					rmpProfs = append(rmpProfs, prof.FirstName+" "+prof.LastName)
+					rmpMap[prof.FirstName+" "+prof.LastName] = Professor{prof.FirstName + " " + prof.LastName, prof.Rating, prof.LegacyID, prof.Difficulty, prof.Ratings, prof.RetakePercentage}
+				}
+			}
+		}
+
+		for _, prof := range munNames {
+			matchedProf := closestName(rmpProfs, prof)
+			matchedProf1 := rmpMap[matchedProf.Name]
+			matchedProf1.Name = prof
+			db.Save(&matchedProf1)
+		}
+
+		cursor = root.Data.Search.Teachers.Info.Cursor
+		hasNextPage = root.Data.Search.Teachers.Info.HasNextPage
 	}
 
 	logger.Println("✅ RMP Scrape Complete!")
