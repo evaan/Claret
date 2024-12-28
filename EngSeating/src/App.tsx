@@ -22,7 +22,6 @@ export default function App() {
             }
         ]
     };
-
     return (
         <div style={{display: "flex", height: "100vh", width: "100vw", alignItems: "center", justifyContent: "center", overflowX: "hidden"}}>
             <div style={{width: "90%", height: "80%"}}>
