@@ -8,11 +8,11 @@ node_modules/
 
 .idea/
 
-ClaretAPI.exe
-ClaretAPI
+API.exe
+API
 
-ClaretScraper.exe
-ClaretScraper
+Scraper.exe
+Scraper
 
 postgres-data
 
