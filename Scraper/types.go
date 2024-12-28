@@ -15,6 +15,10 @@ type Subject struct {
 	FriendlyName string `gorm:"not null"`
 }
 
+type Attribute struct {
+	Attribute string `gorm:"primaryKey;not null"`
+}
+
 type Course struct {
 	CRN         string  `gorm:"not null"`
 	Id          string  `gorm:"not null"`
@@ -27,11 +31,12 @@ type Course struct {
 	SubjectFull string `gorm:"column:subjectFull;not null"`
 	Campus      string `gorm:"not null"`
 	Comment     *string
-	Credits     int      `gorm:"not null"`
-	SemesterID  int      `gorm:"column:semester;not null"`
-	Semester    Semester `gorm:"constraint:OnDelete:CASCADE;"`
-	Level       string   `gorm:"not null"`
-	Identifier  string   `gorm:"primaryKey"`
+	Credits     int         `gorm:"not null"`
+	SemesterID  int         `gorm:"column:semester;not null"`
+	Semester    Semester    `gorm:"constraint:OnDelete:CASCADE;"`
+	Level       string      `gorm:"not null"`
+	Identifier  string      `gorm:"primaryKey"`
+	Attributes  []Attribute `gorm:"many2many:course_attributes;constraint:OnDelete:CASCADE;"`
 }
 
 type CourseTime struct {

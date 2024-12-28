@@ -99,6 +99,7 @@ func processCourse(title []string, body []string, semester int, subject string, 
 	var timeStartLine int
 	var commentEndLine int
 	var level string
+	// var attributes []Attribute
 
 	for i, line := range body {
 		if strings.Contains(line, "Campus") {
@@ -119,6 +120,9 @@ func processCourse(title []string, body []string, semester int, subject string, 
 		}
 		if strings.HasPrefix(line, "Levels:") {
 			level = strings.TrimSpace(line[8:])
+		}
+		if strings.HasPrefix(line, "Attributes:") {
+			logger.Println(line)
 		}
 	}
 
@@ -390,6 +394,7 @@ func main() {
 
 	// migrate schemas
 	db.AutoMigrate(&Semester{})
+	db.AutoMigrate(&Attribute{})
 	db.AutoMigrate(&Course{})
 	db.AutoMigrate(&CourseTime{})
 	db.AutoMigrate(&Seating{})
