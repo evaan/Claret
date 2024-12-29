@@ -2,7 +2,7 @@ name: Build and Push Docker Compose Services to ghcr.io
 
 env:
   REGISTRY: ghcr.io
-  REPOSITORY: ${{ github.repository }}
+  REPOSITORY: ${{ github.repository_owner }}/claret
 
 on:
   push:
