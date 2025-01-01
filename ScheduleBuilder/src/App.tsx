@@ -43,7 +43,7 @@ export default function App() {
             setTimes(data.times);
             setSeating(data.seatings);
             setProfs(data.profs);
-            setExams(data.exams);
+            setExams(data.exam || []);
             const crnsParam = new URLSearchParams(window.location.search).get("crns")?.split(",");
             const newCourses: Course[] = [];
             if (crnsParam !== undefined) {
