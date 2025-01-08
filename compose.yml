@@ -85,11 +85,11 @@ services:
       - traefik.http.routers.ics.tls=true
 
   nginx-prometheus-exporter:
-    image: nginx/nginx-prometheus-exporter:1.4.0
+    image: nginx/nginx-prometheus-exporter:latest
     container_name: nginx-prometheus-exporter
     restart: always
-    environment:
-      - NGINX_STATUS_URI=http://nginx:80/stub_status
+    command:
+      - --nginx.scrape-uri=http://nginx:80/stub_status
     ports:
       - "9113:9113"
     depends_on:
