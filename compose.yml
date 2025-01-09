@@ -8,12 +8,9 @@ services:
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--providers.docker.exposedbydefault=false"
-      - "--metrics.prometheus=true"
-      - "--entryPoints.metrics.address=:8082"
     ports:
       - 80:80
       - 443:443
-      - 8082:8082
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -86,6 +83,19 @@ services:
       - traefik.http.routers.ics.rule=Host(`ics.claretformun.com`)
       - traefik.http.routers.ics.entrypoints=websecure
       - traefik.http.routers.ics.tls=true
+
+  nginx-prometheus-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nginx-prometheus-exporter
+    restart: always
+    command:
+      - --nginx.scrape-uri=http://nginx:80/stub_status
+    ports:
+      - "9113:9113"
+    depends_on:
+      - nginx
+    labels:
+      - "traefik.enable=false"
 
   # discordbot:
   #   container_name: discordBot
