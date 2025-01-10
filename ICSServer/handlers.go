@@ -79,7 +79,7 @@ func ics(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: multiple days a week can be expressed in RRULE, so this loop could be removed
 		for _, day := range day_of_week {
-			ICAL_DATE_TIME_LOCAL_FORM := "20060102T030405"
+			ICAL_DATE_TIME_LOCAL_FORM := "20060102T150405"
 			first_event_date := next_weekday(start_date, day_of_week_map[day])
 			start_time, err := time.Parse("15:04", start)
 			if err != nil {
