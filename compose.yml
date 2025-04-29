@@ -40,10 +40,10 @@ services:
     volumes:
       - ./redis-data:/data
 
-  api:
-    container_name: api
+  server:
+    container_name: server
     restart: always
-    build: ./API
+    build: ./Server
     depends_on:
       - postgres
       - redis
