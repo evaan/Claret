@@ -8,19 +8,4 @@ node_modules/
 
 .idea/
 
-API.exe
-API
-
-Scraper.exe
-Scraper
-
 postgres-data
-
-ClaretBot.exe
-ClaretBot
-
-RateMyProfScraper
-RateMyProfScraper.exe
-rmp.json
-output*.txt
-API/API.exe

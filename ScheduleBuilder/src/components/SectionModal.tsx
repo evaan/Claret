@@ -75,8 +75,8 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                 </ul>
                 <p><strong>Times:</strong></p>
                 <ul className="m-0">
-                    {times.filter((time: Time) => time.crn === props.section.crn).map((time: Time) => (
-                        <li key={time.id}>{formatDateString(time.days)} - {moment(time.startTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")}-{moment(time.endTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")} - {time.location} {props.section.type.includes(", ") ? `(${time.courseType})` : ""}</li>
+                    {times.filter((time: Time) => time.days != null && time.crn === props.section.crn).map((time: Time) => (
+                        <li key={time.id}>{formatDateString(time.days)} - {moment(time.startTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")}-{moment(time.endTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")} - {time.location} {props.section.type.includes(", ") ? `(${time.type})` : ""}</li>
                     ))}
                 </ul>
                 {seatings.filter((seating: Seating) => seating.identifier == props.section.identifier).map((seating: Seating) => {

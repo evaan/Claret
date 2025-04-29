@@ -1,0 +1,776 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/claret.ics": {
+            "get": {
+                "description": "Returns an iCal file containing all schedule items for selected courses",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/calendar"
+                ],
+                "summary": "Get iCal Calendar",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Semester ID (i.e. 202401)",
+                        "name": "semester",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Course Registration Numbers seperated by commas (i.e. 40983,40984)",
+                        "name": "crn",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/courses": {
+            "get": {
+                "description": "Returns all courses for a specified semester",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get all courses",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Semester ID (i.e. 202401)",
+                        "name": "semester",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Course ID (i.e. ECE 3400)",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Course Registration Number (i.e. 40983)",
+                        "name": "crn",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/util.CourseAPI"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/exams": {
+            "get": {
+                "description": "Returns all exams for a specified semester",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get all exams",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Semester ID (i.e. 202401)",
+                        "name": "semester",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/util.ExamTimeAPI"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/frontend": {
+            "get": {
+                "description": "Returns all data (courses, prof ratings, subjects, seats, times, and exams) for a specified semester (or latest for no semester)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Frontend",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Semester ID (i.e. 202401)",
+                        "name": "semester",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/util.FrontendAPIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/instructors": {
+            "get": {
+                "description": "Returns all instructors and instructor ratings from a course",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get Course Instructors",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Semester ID (i.e. 202401)",
+                        "name": "semester",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Course Registration Number (i.e. 40983)",
+                        "name": "crn",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/util.ProfessorRatingAPI"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/rmp": {
+            "get": {
+                "description": "Returns all instructor ratings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get Course Instructors",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Instructor Name",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/util.ProfessorRatingAPI"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seats": {
+            "get": {
+                "description": "Returns seats from a specified course, may take a few seconds if seats not cached",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get Course Seats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Semester ID (i.e. 202401)",
+                        "name": "semester",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Course Registration Number (i.e. 40983)",
+                        "name": "crn",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/util.CourseSeating"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/semester": {
+            "get": {
+                "description": "Returns all semesters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get Semesters",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Semester ID (i.e. 202401)",
+                        "name": "semester",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/util.Semester"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/subjects": {
+            "get": {
+                "description": "Returns all subjects",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get Subjects",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Semester ID (i.e. 202401)",
+                        "name": "semester",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/util.Subject"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/times": {
+            "get": {
+                "description": "Returns all times from course",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get Course Times",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Semester ID (i.e. 202401)",
+                        "name": "semester",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Course Registration Number (i.e. 40983)",
+                        "name": "crn",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/util.CourseTimeAPI"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "util.CourseAPI": {
+            "type": "object",
+            "properties": {
+                "campus": {
+                    "type": "string"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "credits": {
+                    "type": "integer"
+                },
+                "crn": {
+                    "type": "string"
+                },
+                "dateRange": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "instructor": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "registrationDates": {
+                    "type": "string"
+                },
+                "section": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "util.CourseFrontendAPI": {
+            "type": "object",
+            "properties": {
+                "campus": {
+                    "type": "string"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "credits": {
+                    "type": "integer"
+                },
+                "crn": {
+                    "type": "string"
+                },
+                "dateRange": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "instructor": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "registrationDates": {
+                    "type": "string"
+                },
+                "section": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "util.CourseSeating": {
+            "type": "object",
+            "properties": {
+                "crn": {
+                    "type": "string"
+                },
+                "seats": {
+                    "$ref": "#/definitions/util.SeatingInfo"
+                },
+                "semester": {
+                    "type": "string"
+                },
+                "waitlist": {
+                    "$ref": "#/definitions/util.SeatingInfo"
+                }
+            }
+        },
+        "util.CourseSeatingResponse": {
+            "type": "object",
+            "properties": {
+                "crn": {
+                    "type": "string"
+                },
+                "seats": {
+                    "$ref": "#/definitions/util.SeatingInfo"
+                },
+                "waitlist": {
+                    "$ref": "#/definitions/util.SeatingInfo"
+                }
+            }
+        },
+        "util.CourseTimeAPI": {
+            "type": "object",
+            "properties": {
+                "crn": {
+                    "type": "string"
+                },
+                "dateRange": {
+                    "type": "string"
+                },
+                "days": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "professorNames": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "util.CourseTimeFrontendAPI": {
+            "type": "object",
+            "properties": {
+                "crn": {
+                    "type": "string"
+                },
+                "dateRange": {
+                    "type": "string"
+                },
+                "days": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "util.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "util.ExamTimeAPI": {
+            "type": "object",
+            "properties": {
+                "crn": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "semester": {
+                    "type": "integer"
+                },
+                "time": {
+                    "type": "string"
+                }
+            }
+        },
+        "util.FrontendAPIResponse": {
+            "type": "object",
+            "properties": {
+                "courses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.CourseFrontendAPI"
+                    }
+                },
+                "exams": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.ExamTimeAPI"
+                    }
+                },
+                "profs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.ProfessorRatingAPI"
+                    }
+                },
+                "seatings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.CourseSeatingResponse"
+                    }
+                },
+                "subjects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.Subject"
+                    }
+                },
+                "times": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.CourseTimeFrontendAPI"
+                    }
+                }
+            }
+        },
+        "util.ProfessorRatingAPI": {
+            "type": "object",
+            "properties": {
+                "difficulty": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "number"
+                },
+                "ratings": {
+                    "type": "integer"
+                },
+                "wouldRetake": {
+                    "type": "number"
+                }
+            }
+        },
+        "util.SeatingInfo": {
+            "type": "object",
+            "properties": {
+                "actual": {
+                    "type": "integer"
+                },
+                "capacity": {
+                    "type": "integer"
+                },
+                "remaining": {
+                    "type": "integer"
+                }
+            }
+        },
+        "util.Semester": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "latest": {
+                    "type": "boolean"
+                },
+                "medicine": {
+                    "type": "boolean"
+                },
+                "mi": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "viewOnly": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "util.Subject": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

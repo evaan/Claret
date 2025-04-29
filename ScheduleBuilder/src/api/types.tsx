@@ -1,6 +1,6 @@
 export interface Subject {
+    id: string;
     name: string;
-    friendlyName: string;
 }
 
 export interface Semester {
@@ -36,7 +36,7 @@ export interface Time {
     startTime: string;
     endTime: string;
     location: string;
-    courseType: string;
+    type: string;
     id: number;
     identifier: string;
 }
