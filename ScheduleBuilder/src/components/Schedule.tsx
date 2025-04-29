@@ -4,7 +4,6 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import { useAtom } from "jotai";
 import {
   selectedCoursesAtom,
-  selectedSemesterAtom,
   timesAtom,
 } from "../api/atoms";
 import { Course, Time } from "../api/types";
@@ -45,19 +44,13 @@ export default function Schedule() {
   const [clearModalOpen, setClearModalOpen] = React.useState<boolean>(false);
   const closeClearModal = () => setClearModalOpen(false);
 
-  const [selectedSemester] = useAtom(selectedSemesterAtom);
-
   let credits = 0;
   let overlapping = false;
-  let courseTimes: { title: string; start: string; end?: string }[] = [];
+  const courseTimes: { title: string; start: string; end?: string }[] = [];
 
   const startTimes: number[] = [];
   const endTimes: number[] = [];
   let weekend = false;
-
-  React.useEffect(() => {
-    courseTimes = [];
-  }, [selectedSemester]);
 
   function dayOfWeekName(day: string) {
     if (day === "Sunday") {
@@ -127,6 +120,8 @@ export default function Schedule() {
       });
   });
 
+  const finalHour = Math.max(max, othersHourCursor);
+
   overlapCheck: for (const time of courseTimes) {
     for (const time1 of courseTimes) {
       if (
@@ -172,9 +167,9 @@ export default function Schedule() {
         height="auto"
         dayHeaderFormat={{ weekday: "long" }}
         dayHeaderContent={(arg) => dayOfWeekName(arg.text)}
-        slotDuration={max - min > 12 ? "00:30:00" : "00:15:00"}
+        slotDuration={finalHour - min > 12 ? "00:30:00" : "00:15:00"}
         slotMinTime={`${min}:00`}
-        slotMaxTime={`${Math.max(max, min + courseTimes.length)}:00`}
+        slotMaxTime={`${finalHour}:00`}
         initialView="timeGrid"
         visibleRange={{
           start: moment().startOf("week").add(weekend ? 0 : 1, "days").format("YYYY-MM-DD"),
