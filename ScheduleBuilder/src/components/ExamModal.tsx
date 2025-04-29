@@ -37,7 +37,7 @@ export default function ExamModal(props: { isOpen: boolean; onHide: () => void }
                     </thead>
                     <tbody>
                         {selectedCourses.map((course: Course) => {
-                            const exam: ExamTime | undefined = exams.filter((exam: ExamTime) => exam.crn == course.crn && exam.section == course.section)[0];
+                            const exam: ExamTime | undefined = exams.filter((exam: ExamTime) => exam.crn == course.crn)[0];
                             if (exam === undefined) return null;
                             return (
                                 <tr>

@@ -60,9 +60,7 @@ export interface Professor {
 }
 
 export interface ExamTime {
-    id: string;
-    section: string;
-    crn: string;
-    time: string;
-    location: string;
+   crn: string;
+   time: string;
+   location: string; 
 }

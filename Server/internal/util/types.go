@@ -193,7 +193,6 @@ type ExamTime struct {
 
 type ExamTimeAPI struct {
 	CRN      string `json:"crn"`
-	Semester int    `json:"semester"`
 	Time     string `json:"time"`
 	Location string `json:"location"`
 }
