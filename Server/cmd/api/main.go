@@ -137,7 +137,5 @@ func StartAPI(db *gorm.DB, rdb *redis.Client, enableLimit bool, limit string) {
 		api.ICalHandler(c, db)
 	})
 
-	// TODO: seating
-
 	r.Run()
 }
