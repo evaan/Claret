@@ -33,17 +33,18 @@ func main() {
 	db.AutoMigrate(&util.ProfessorRating{})
 	db.AutoMigrate(&util.ExamTime{})
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     os.Getenv("REDIS_URL"),
+		Username: os.Getenv("REDIS_USERNAME"),
+		Password: os.Getenv("REDIS_PASSWORD"),
+		DB:       util.GetEnvAsInt("REDIS_CACHE_DB"),
+	})
+
 	if util.GetEnvAsBool("SCRAPER_ENABLED") {
-		go scrapers.Entrypoint(db, os.Getenv("API_WEBHOOK_URL"), util.GetEnvAsBool("SCRAPER_ALL"))
+		go scrapers.Entrypoint(db, os.Getenv("API_WEBHOOK_URL"), util.GetEnvAsBool("SCRAPER_ALL"), rdb)
 	}
 
 	if util.GetEnvAsBool("API_ENABLED") {
-		rdb := redis.NewClient(&redis.Options{
-			Addr:     os.Getenv("REDIS_URL"),
-			Username: os.Getenv("REDIS_USERNAME"),
-			Password: os.Getenv("REDIS_PASSWORD"),
-			DB:       util.GetEnvAsInt("REDIS_CACHE_DB"),
-		})
 		logger.Println("💿 Connected to Redis Database!")
 		go api.StartAPI(db, rdb, util.GetEnvAsBool("API_RATE_LIMIT_ENABLED"), os.Getenv("API_RATE_LIMIT"))
 	}

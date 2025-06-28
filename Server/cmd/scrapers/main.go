@@ -2,6 +2,7 @@ package scrapers
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,14 +12,16 @@ import (
 
 	"github.com/evaan/Claret/internal/scrapers"
 	"github.com/evaan/Claret/internal/util"
+	"github.com/redis/go-redis/v9"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
 )
 
-func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool) {
+func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 	startTime := time.Now()
 	coursesScraped := 0
 	logger := log.Default()
+	ctx := context.Background()
 
 	logger.Println("⭐ Scraping Started!")
 
@@ -60,6 +63,7 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool) {
 		for _, exam := range scrapers.GetExams(semester.ID) {
 			db.Save(&exam)
 		}
+		rdb.Del(ctx, "frontend:"+strconv.Itoa(semester.ID))
 	}
 
 	logger.Println("⭐ RMP Scraping Started!")
@@ -91,11 +95,11 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool) {
 	}
 }
 
-func Entrypoint(db *gorm.DB, webhookURL string, scrapeAll bool) {
+func Entrypoint(db *gorm.DB, webhookURL string, scrapeAll bool, rdb *redis.Client) {
 	c := cron.New()
 
-	Scrape(db, webhookURL, scrapeAll)
+	Scrape(db, webhookURL, scrapeAll, rdb)
 
-	c.AddFunc("30 4 * * 1", func() { Scrape(db, webhookURL, scrapeAll) })
+	c.AddFunc("30 4 * * 1", func() { Scrape(db, webhookURL, scrapeAll, rdb) })
 	c.Start()
 }

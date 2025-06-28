@@ -42,12 +42,18 @@ export interface Time {
 }
 
 export interface Seating {
-    identifier: string;
-    crn: string;
-    available: string;
-    max: string;
-    waitlist: string;
-    checked: string;
+  semester: string;
+  crn: string;
+  seats: {
+    capacity: number;
+    actual: number;
+    remaining: number;
+  };
+  waitlist: {
+    capacity: number;
+    actual: number;
+    remaining: number;
+  };
 }
 
 export interface Professor {

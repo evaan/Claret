@@ -68,4 +68,5 @@ func SeatsHandler(c *gin.Context, db *gorm.DB, rdb *redis.Client) {
 	if err != nil {
 		fmt.Println("Error adding data to Redis database:", err)
 	}
+	rdb.Del(ctx, "frontend:"+semester)
 }
