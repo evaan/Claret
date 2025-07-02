@@ -27,11 +27,11 @@ export default function App() {
         fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/semesters").then(response => response.json()).then((data: Semester[]) => {
             setSemesters(data);
             const params = new URLSearchParams(window.location.search);
-            let semester = "";
-            semester = data.filter((semester: Semester) => (params.get("semester") || "") == semester.id.toString()).length >= 1 ? params.get("semester") || data.filter((semester: Semester) => semester.latest)[0].id.toString() : data.filter((semester: Semester) => semester.latest)[0].id.toString(); 
-            params.set("semester", semester);
+            const semester: Semester = data.find((s: Semester) => s.id.toString() === params.get("semester")) ?? data.find((s: Semester) => s.latest)!;
+            setSelectedSemester(semester);
+            params.set("semester", semester.id.toString());
             window.history.replaceState(null, "", `?${params}`);
-            setSelectedSemester(data.filter((semester1: Semester) => semester == semester1.id.toString())[0]);
+            setSelectedSemester(data.filter((semester1: Semester) => semester.id.toString() == semester1.id.toString())[0]);
         });
     }, []);
 
