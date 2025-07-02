@@ -13,9 +13,7 @@ export function SectionButton(props: {section: Course}) {
     const [semester] = useAtom(selectedSemesterAtom);
 
     async function openModal() {
-        console.log(seatings);
         const existing = seatings.some(s => s.crn === props.section.crn);
-        console.log(existing);
         if (existing) {
             setModalOpen(true);
         } else {
