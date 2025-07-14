@@ -14,16 +14,14 @@ export function SectionButton(props: {section: Course}) {
 
     async function openModal() {
         const existing = seatings.some(s => s.crn === props.section.crn);
-        if (existing) {
-            setModalOpen(true);
-        } else {
-            fetch(`${process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080"}/seats?crn=${props.section.crn}&semester=${semester?.id.toString()}`)
+        setModalOpen(true);
+        if (!existing) {
+            fetch(`${process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "https://api.claretformun.com"}/seats?crn=${props.section.crn}&semester=${semester?.id.toString()}`)
                 .then(response => response.json())
                 .then((data: Seating) => {
                     setSeatings(prev => [...prev, data]);
                 })
                 .finally(() => {
-                setModalOpen(true);
             });
         }
     }

@@ -91,6 +91,12 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                         </div>
                     );
                 })}
+                {seatings.filter((seating: Seating) => seating.crn == props.section.crn).length == 0 &&
+                    <>
+                        <p><strong>Seats Available:</strong> Loading...</p>
+                        <p><strong>Waitlist Available:</strong> Loading...</p>
+                    </>
+                }
             </ModalBody>
             <ModalFooter>
                 <Button variant="secondary" onClick={() => props.onHide()}>Close</Button>
