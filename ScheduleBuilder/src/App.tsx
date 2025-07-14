@@ -27,17 +27,17 @@ export default function App() {
         fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/semesters").then(response => response.json()).then((data: Semester[]) => {
             setSemesters(data);
             const params = new URLSearchParams(window.location.search);
-            let semester = "";
-            semester = data.filter((semester: Semester) => (params.get("semester") || "") == semester.id.toString()).length >= 1 ? params.get("semester") || data.filter((semester: Semester) => semester.latest)[0].id.toString() : data.filter((semester: Semester) => semester.latest)[0].id.toString(); 
-            params.set("semester", semester);
+            const semester: Semester = data.find((s: Semester) => s.id.toString() === params.get("semester")) ?? data.find((s: Semester) => s.latest)!;
+            setSelectedSemester(semester);
+            params.set("semester", semester.id.toString());
             window.history.replaceState(null, "", `?${params}`);
-            setSelectedSemester(data.filter((semester1: Semester) => semester == semester1.id.toString())[0]);
+            setSelectedSemester(data.filter((semester1: Semester) => semester.id.toString() == semester1.id.toString())[0]);
         });
     }, []);
 
     React.useEffect(() => {
         if (selectedSemester == null) return;
-        fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/all?semester=" + selectedSemester.id).then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[], profs: Professor[], exams: ExamTime[]}) => {
+        fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/frontend?semester=" + selectedSemester.id).then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[], profs: Professor[], exams: ExamTime[]}) => {
             setSubjects(data.subjects);
             setCourses(data.courses);
             setTimes(data.times);
@@ -91,8 +91,8 @@ export default function App() {
                             if (event !== null) setSelectedTab([event, "-1"]);
                         }, 500);
                     }}>
-                        {subjects.sort(function(a, b) {if (a.friendlyName < b.friendlyName) return -1; else return 1;}).map((subject, index) => {
-                            if (courses.filter((course: Course) => course.subject == subject.name && shouldShow(course, filters) && (searchQuery == "" || course.id.toLowerCase().includes(searchQuery.toLowerCase()) || course.subjectFull.toLowerCase().includes(searchQuery.toLowerCase()) || course.name.toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) {
+                        {subjects.sort(function(a, b) {if (a.name < b.name) return -1; else return 1;}).map((subject, index) => {
+                            if (courses.filter((course: Course) => course.subject == subject.id && shouldShow(course, filters) && (searchQuery == "" || course.id.toLowerCase().includes(searchQuery.toLowerCase()) || course.name.toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) {
                                 return (<SubjectAccordion subject={subject} index={subject.name} key={index} />);
                             }
                         })}

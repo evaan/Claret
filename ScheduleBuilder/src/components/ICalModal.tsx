@@ -8,7 +8,7 @@ export default function ICalModal(props: { isOpen: boolean; onHide: () => void }
     const [selectedSemester] = useAtom(selectedSemesterAtom);
     const generateiCalURL = () => {
         const crnString: string = selectedCourses.map(obj => obj.crn).join(",");
-        return `https://ics.claretformun.com/feed.ics?semester=${selectedSemester?.id}&crn=${crnString}`;
+        return `https://api.claretformun.com/claret.ics?semester=${selectedSemester?.id}&crns=${crnString}`;
     };
     
     const copyURL = () => {

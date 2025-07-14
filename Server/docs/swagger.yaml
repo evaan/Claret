@@ -1,0 +1,511 @@
+definitions:
+  util.CourseAPI:
+    properties:
+      campus:
+        type: string
+      comment:
+        type: string
+      credits:
+        type: integer
+      crn:
+        type: string
+      dateRange:
+        type: string
+      id:
+        type: string
+      instructor:
+        type: string
+      level:
+        type: string
+      name:
+        type: string
+      registrationDates:
+        type: string
+      section:
+        type: string
+      subject:
+        type: string
+      type:
+        type: string
+    type: object
+  util.CourseFrontendAPI:
+    properties:
+      campus:
+        type: string
+      comment:
+        type: string
+      credits:
+        type: integer
+      crn:
+        type: string
+      dateRange:
+        type: string
+      id:
+        type: string
+      instructor:
+        type: string
+      level:
+        type: string
+      name:
+        type: string
+      registrationDates:
+        type: string
+      section:
+        type: string
+      subject:
+        type: string
+      type:
+        type: string
+    type: object
+  util.CourseSeating:
+    properties:
+      crn:
+        type: string
+      seats:
+        $ref: '#/definitions/util.SeatingInfo'
+      semester:
+        type: string
+      waitlist:
+        $ref: '#/definitions/util.SeatingInfo'
+    type: object
+  util.CourseSeatingResponse:
+    properties:
+      crn:
+        type: string
+      seats:
+        $ref: '#/definitions/util.SeatingInfo'
+      waitlist:
+        $ref: '#/definitions/util.SeatingInfo'
+    type: object
+  util.CourseTimeAPI:
+    properties:
+      crn:
+        type: string
+      dateRange:
+        type: string
+      days:
+        type: string
+      endTime:
+        type: string
+      location:
+        type: string
+      professorNames:
+        type: string
+      startTime:
+        type: string
+      type:
+        type: string
+    type: object
+  util.CourseTimeFrontendAPI:
+    properties:
+      crn:
+        type: string
+      dateRange:
+        type: string
+      days:
+        type: string
+      endTime:
+        type: string
+      location:
+        type: string
+      startTime:
+        type: string
+      type:
+        type: string
+    type: object
+  util.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  util.ExamTimeAPI:
+    properties:
+      crn:
+        type: string
+      location:
+        type: string
+      semester:
+        type: integer
+      time:
+        type: string
+    type: object
+  util.FrontendAPIResponse:
+    properties:
+      courses:
+        items:
+          $ref: '#/definitions/util.CourseFrontendAPI'
+        type: array
+      exams:
+        items:
+          $ref: '#/definitions/util.ExamTimeAPI'
+        type: array
+      profs:
+        items:
+          $ref: '#/definitions/util.ProfessorRatingAPI'
+        type: array
+      seatings:
+        items:
+          $ref: '#/definitions/util.CourseSeatingResponse'
+        type: array
+      subjects:
+        items:
+          $ref: '#/definitions/util.Subject'
+        type: array
+      times:
+        items:
+          $ref: '#/definitions/util.CourseTimeFrontendAPI'
+        type: array
+    type: object
+  util.ProfessorRatingAPI:
+    properties:
+      difficulty:
+        type: number
+      id:
+        type: integer
+      name:
+        type: string
+      rating:
+        type: number
+      ratings:
+        type: integer
+      wouldRetake:
+        type: number
+    type: object
+  util.SeatingInfo:
+    properties:
+      actual:
+        type: integer
+      capacity:
+        type: integer
+      remaining:
+        type: integer
+    type: object
+  util.Semester:
+    properties:
+      id:
+        type: integer
+      latest:
+        type: boolean
+      medicine:
+        type: boolean
+      mi:
+        type: boolean
+      name:
+        type: string
+      viewOnly:
+        type: boolean
+    type: object
+  util.Subject:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /claret.ics:
+    get:
+      consumes:
+      - application/json
+      description: Returns an iCal file containing all schedule items for selected
+        courses
+      parameters:
+      - description: Semester ID (i.e. 202401)
+        in: query
+        name: semester
+        required: true
+        type: string
+      - description: Course Registration Numbers seperated by commas (i.e. 40983,40984)
+        in: query
+        name: crn
+        required: true
+        type: string
+      produces:
+      - text/calendar
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get iCal Calendar
+  /courses:
+    get:
+      consumes:
+      - application/json
+      description: Returns all courses for a specified semester
+      parameters:
+      - description: Semester ID (i.e. 202401)
+        in: query
+        name: semester
+        required: true
+        type: string
+      - description: Course ID (i.e. ECE 3400)
+        in: query
+        name: id
+        type: string
+      - description: Course Registration Number (i.e. 40983)
+        in: query
+        name: crn
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/util.CourseAPI'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get all courses
+  /exams:
+    get:
+      consumes:
+      - application/json
+      description: Returns all exams for a specified semester
+      parameters:
+      - description: Semester ID (i.e. 202401)
+        in: query
+        name: semester
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/util.ExamTimeAPI'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get all exams
+  /frontend:
+    get:
+      consumes:
+      - application/json
+      description: Returns all data (courses, prof ratings, subjects, seats, times,
+        and exams) for a specified semester (or latest for no semester)
+      parameters:
+      - description: Semester ID (i.e. 202401)
+        in: query
+        name: semester
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/util.FrontendAPIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Frontend
+  /instructors:
+    get:
+      consumes:
+      - application/json
+      description: Returns all instructors and instructor ratings from a course
+      parameters:
+      - description: Semester ID (i.e. 202401)
+        in: query
+        name: semester
+        required: true
+        type: string
+      - description: Course Registration Number (i.e. 40983)
+        in: query
+        name: crn
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/util.ProfessorRatingAPI'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get Course Instructors
+  /rmp:
+    get:
+      consumes:
+      - application/json
+      description: Returns all instructor ratings
+      parameters:
+      - description: Instructor Name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/util.ProfessorRatingAPI'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get Course Instructors
+  /seats:
+    get:
+      consumes:
+      - application/json
+      description: Returns seats from a specified course, may take a few seconds if
+        seats not cached
+      parameters:
+      - description: Semester ID (i.e. 202401)
+        in: query
+        name: semester
+        required: true
+        type: string
+      - description: Course Registration Number (i.e. 40983)
+        in: query
+        name: crn
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/util.CourseSeating'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get Course Seats
+  /semester:
+    get:
+      consumes:
+      - application/json
+      description: Returns all semesters
+      parameters:
+      - description: Semester ID (i.e. 202401)
+        in: query
+        name: semester
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/util.Semester'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get Semesters
+  /subjects:
+    get:
+      consumes:
+      - application/json
+      description: Returns all subjects
+      parameters:
+      - description: Semester ID (i.e. 202401)
+        in: query
+        name: semester
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/util.Subject'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get Subjects
+  /times:
+    get:
+      consumes:
+      - application/json
+      description: Returns all times from course
+      parameters:
+      - description: Semester ID (i.e. 202401)
+        in: query
+        name: semester
+        required: true
+        type: string
+      - description: Course Registration Number (i.e. 40983)
+        in: query
+        name: crn
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/util.CourseTimeAPI'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get Course Times
+swagger: "2.0"

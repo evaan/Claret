@@ -34,16 +34,31 @@ services:
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
 
-  api:
-    container_name: api
+  redis:
+    image: redis:alpine
     restart: always
-    build: ./API
+    volumes:
+      - ./redis-data:/data
+
+  server:
+    container_name: server
+    restart: always
+    build: ./Server
     depends_on:
       - postgres
+      - redis
     ports:
       - "8080:8080"
     environment:
-      DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
+      POSTGRES_URL: "postgresql://postgres:admin@postgres:5432/claret"
+      REDIS_URL: "redis:6379"
+      SCRAPER_ENABLED: "true"
+      SCRAPER_ALL: "true"
+      SCRAPER_WEBHOOK_URL: ${WEBHOOK_URL}
+      API_ENABLED: "true"
+      GIN_MODE: "release"
+      API_RATE_LIMIT_ENABLED: "true"
+      API_RATE_LIMIT: "120-M"
       PORT: 8080
       TZ: America/St_Johns
     labels:
@@ -52,62 +67,3 @@ services:
       - traefik.http.routers.api.rule=Host(`api.claretformun.com`)
       - traefik.http.routers.api.entrypoints=websecure
       - traefik.http.routers.api.tls=true
-
-  scraper:
-    container_name: scraper
-    restart: always
-    build: ./Scraper
-    depends_on:
-      - postgres
-    environment:
-      DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
-      WEBHOOK_URL: ${WEBHOOK_URL}
-      TZ: America/St_Johns
-
-  icsserver:
-    container_name: icsServer
-    restart: always
-    build: ./ICSServer
-    depends_on:
-      - postgres
-    ports:
-      - "8000:8000"
-    environment:
-      DB_URL: "postgresql://postgres:admin@postgres:5432/claret"
-      PORT: 8000
-      TZ: America/St_Johns
-      BANNER_TZ: America/St_Johns
-    labels:
-      - traefik.enable=true
-      - traefik.port=8000
-      - traefik.http.routers.ics.rule=Host(`ics.claretformun.com`)
-      - traefik.http.routers.ics.entrypoints=websecure
-      - traefik.http.routers.ics.tls=true
-
-  nginx-prometheus-exporter:
-    image: nginx/nginx-prometheus-exporter:latest
-    container_name: nginx-prometheus-exporter
-    restart: always
-    command:
-      - --nginx.scrape-uri=http://nginx:80/stub_status
-    ports:
-      - "9113:9113"
-    depends_on:
-      - nginx
-    labels:
-      - "traefik.enable=false"
-
-  # discordbot:
-  #   container_name: discordBot
-  #   restart: always
-  #   build:
-  #     context: .
-  #     dockerfile: DiscordBot.Dockerfile
-  #   depends_on:
-  #     - postgres
-  #     - claretapi
-  #   environment:
-  #     TOKEN: ${DISCORD_BOT_TOKEN}
-  #     API_URL: https://api.claretformun.com
-  #     GUILD_ID: ${DISCORD_GUILD_ID}
-  #     DB_URL: "postgresql://postgres:admin@postgres:5432/claret"

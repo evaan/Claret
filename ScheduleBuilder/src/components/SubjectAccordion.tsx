@@ -8,7 +8,7 @@ import { shouldShow } from "../api/functions";
 export default function SubjectAccordion(props: {subject: Subject, index: string,}) {
     const [filters] = useAtom(filterAtom);
     const [courses] = useAtom(coursesAtom);
-    const subjectCourses = courses.filter((course: Course) => course.subject === props.subject.name);
+    const subjectCourses = courses.filter((course: Course) => course.subject === props.subject.id);
     const uniqueCourses: [string, string, string][] = [];
     const [selectedTab] = useAtom(selectedTabAtom);
     const sortingOrder: {[name: string]: number} = {"Lecture": 1, "Laboratory": 2, "World Wide Web": 3};
@@ -21,13 +21,13 @@ export default function SubjectAccordion(props: {subject: Subject, index: string
     return (
         <Accordion.Item eventKey={props.index}>
             <Accordion.Header>
-                {props.subject.friendlyName}
+                {props.subject.name}
             </Accordion.Header>
             <Accordion.Body>
                 {selectedTab.includes(props.index) &&
                     <Accordion>
                     {uniqueCourses.sort(function(x, y) {return x>y ? 1: -1;}).map((course: [id: string, name: string, subject: string]) => {
-                        if (courses.filter((course1: Course) => course1.id == course[0] && shouldShow(course1, filters) && (searchQuery == "" || course[0].toLowerCase().includes(searchQuery.toLowerCase()) || course[2].toLowerCase().includes(searchQuery.toLowerCase()) || course[1].toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) return (
+                        if (courses.filter((course1: Course) => course1.id == course[0] && shouldShow(course1, filters) && (searchQuery == "" || course[0].toLowerCase().includes(searchQuery.toLowerCase()) || (course[2] || "").toLowerCase().includes(searchQuery.toLowerCase()) || course[1].toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) return (
                             <Accordion.Item eventKey={course[0]} key={course[0]}>
                                 <Accordion.Header>
                                     {course[0]} - {course[1]}

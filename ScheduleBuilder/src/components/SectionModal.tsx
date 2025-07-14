@@ -8,11 +8,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
     const [times] = useAtom(timesAtom);
     const [profs] = useAtom(profsAtom);
     const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
-    const [seatings, setSeatings] = useAtom(seatingAtom);
-
-    async function updateSeatings(crn: string, semester: number) {
-        fetch(`${process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080"}/seating?crn=${crn}&semester=${semester.toString()}`).then(response => response.json()).then((data: Seating[]) => {setSeatings(seatings.map((seating: Seating) => seating.identifier == props.section.identifier ? data[0] : seating));});
-    }
+    const [seatings] = useAtom(seatingAtom);
 
     function formatDateString(input: string){
         input = input.replace("M", "Monday, ").replace("T", "Tuesday, ").replace("W", "Wednesday, ").replace("R", "Thursday, ").replace("F", "Friday, ").replace("S", "Saturday, ").replace("U", "Sunday, ");
@@ -62,35 +58,45 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                 <p><strong>Campus:</strong> {props.section.campus}</p>
                 <p><strong>Type:</strong> {props.section.type !== null ? props.section.type : "Unknown"}</p>
                 <p><strong>Date Range:</strong> {props.section.dateRange !== null ? props.section.dateRange : "Unknown"}</p>
-                <p><strong>Instructors:</strong></p>
-                <ul className="m-0">
-                    {props.section.instructor != null && props.section.instructor.split(", ").map((instructor: string) => {
-                        if (profs !== undefined && profs.filter((prof: Professor) => prof.name == instructor).length > 0) {
-                            const prof = profs.filter((prof: Professor) => prof.name == instructor)[0];
-                            return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/professor/${prof.id}`} rel="noreferrer" target="_blank">(RateMyProfessors Rating: {prof.rating}/5)</a>}</li>;
-                        }
-                        else
-                            return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/search/professors/1441?q=${instructor.replace(/\s[A-Za-z]\.\s/g, ' ')}`} rel="noreferrer" target="_blank">(Search on RateMyProfessors)</a>}</li>;
-                    })}
-                </ul>
-                <p><strong>Times:</strong></p>
-                <ul className="m-0">
-                    {times.filter((time: Time) => time.crn === props.section.crn).map((time: Time) => (
-                        <li key={time.id}>{formatDateString(time.days)} - {moment(time.startTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")}-{moment(time.endTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")} - {time.location} {props.section.type.includes(", ") ? `(${time.courseType})` : ""}</li>
-                    ))}
-                </ul>
-                {seatings.filter((seating: Seating) => seating.identifier == props.section.identifier).map((seating: Seating) => {
-                    if (props.isOpen && (moment(seating.checked).isBefore(moment().subtract(1, "hours")) || seating.checked == "Never")) {
-                        setTimeout(() => {updateSeatings(props.section.crn, props.section.semester);}, 200);
-                    }
+                {props.section.instructor != null && props.section.instructor != "" && (
+                    <>
+                        <p><strong>Instructors:</strong></p>
+                        <ul className="m-0">
+                            {props.section.instructor.split(", ").map((instructor: string) => {
+                                if (profs !== undefined && profs.filter((prof: Professor) => prof.name == instructor).length > 0) {
+                                    const prof = profs.filter((prof: Professor) => prof.name == instructor)[0];
+                                    return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/professor/${prof.id}`} rel="noreferrer" target="_blank">(RateMyProfessors Rating: {prof.rating}/5)</a>}</li>;
+                                }
+                                else
+                                    return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/search/professors/1441?q=${instructor.replace(/\s[A-Za-z]\.\s/g, ' ')}`} rel="noreferrer" target="_blank">(Search on RateMyProfessors)</a>}</li>;
+                            })}
+                        </ul>
+                    </>
+                )}
+                {times.some(time => time.days && time.crn === props.section.crn) && (
+                        <>
+                            <p><strong>Times:</strong></p>
+                            <ul className="m-0">
+                                {times.filter((time: Time) => time.days != null && time.crn === props.section.crn).map((time: Time) => (
+                                    <li key={time.id}>{formatDateString(time.days)} - {moment(time.startTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")}-{moment(time.endTime, "HH:mm").format("hh:mm A").replace("Invalid date", "TBA")} - {time.location} {props.section.type.includes(", ") ? `(${time.type})` : ""}</li>
+                                ))}
+                            </ul>
+                        </>
+                )}
+                {seatings.filter((seating: Seating) => seating.crn == props.section.crn).map((seating: Seating) => {
                     return (
                         <div key={seating.crn}>
-                            <p><strong>Seats Available:</strong> <span className={Number(seating.available) <= 0 ? "text-danger" : ""}>{seating.available}/{seating.max}</span></p>
-                            <p><strong>Waitlist:</strong> {seating.waitlist}</p>
-                            <p><strong>Last Checked:</strong> {moment.utc(seating.checked).fromNow().replace("Invalid date", "Never")} <Button variant="link" style={{padding: "0"}} disabled={moment(seating.checked).isAfter(moment().subtract(5, "minutes"))} onClick={async () => await updateSeatings(props.section.crn, props.section.semester)}>(Update)</Button></p>
+                            <p><strong>Seats Available:</strong> <span className={Number(seating.seats.remaining) <= 0 ? "text-danger" : ""}>{seating.seats.remaining}/{seating.seats.capacity}</span></p>
+                            <p><strong>Waitlist Available:</strong> <span className={Number(seating.waitlist.remaining) <= 0 ? "text-danger" : ""}>{seating.waitlist.remaining}/{seating.waitlist.remaining}</span></p>
                         </div>
                     );
                 })}
+                {seatings.filter((seating: Seating) => seating.crn == props.section.crn).length == 0 &&
+                    <>
+                        <p><strong>Seats Available:</strong> Loading...</p>
+                        <p><strong>Waitlist Available:</strong> Loading...</p>
+                    </>
+                }
             </ModalBody>
             <ModalFooter>
                 <Button variant="secondary" onClick={() => props.onHide()}>Close</Button>
