@@ -33,13 +33,15 @@ func ParseCourse(logger *log.Logger, e *colly.HTMLElement, semester int, subject
 	course.Key = semesterStr + course.CRN
 	course.Name = strings.Join(segments[:n-3], " - ")
 
-	for i, line := range strings.Split(body, "\n") {
+	comment := ""
+	commentDone := false
+	for _, line := range strings.Split(body, "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
-			if i == 2 {
-				if !strings.HasPrefix(line, "Associated Term") {
-					course.Comment = &line
-				}
+			if !commentDone && !strings.HasPrefix(line, "Associated Term") {
+				comment += line
+			} else if !commentDone {
+				commentDone = true
 			}
 			if strings.HasPrefix(line, "Levels:") {
 				course.Levels = strings.TrimSpace(strings.TrimPrefix(line, "Levels:"))
@@ -53,6 +55,8 @@ func ParseCourse(logger *log.Logger, e *colly.HTMLElement, semester int, subject
 			}
 		}
 	}
+
+	course.Comment = &comment
 
 	var schedule []string
 
