@@ -1,42 +1,32 @@
 package scrapers
 
 import (
-	"log"
+	"encoding/json"
+	"io"
+	"net/http"
 	"strconv"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/evaan/Claret/internal/util"
-	"github.com/gocolly/colly/v2"
 )
 
-func GetSubjects(logger *log.Logger, semester int) []util.Subject {
-	var subjects []util.Subject
-
-	c := colly.NewCollector()
-
-	c.OnHTML("select[name=sel_subj]", func(e *colly.HTMLElement) {
-		e.DOM.Find("option").Each(func(i int, s *goquery.Selection) {
-			if s.Text() != "All" {
-				id, exists := s.Attr("value")
-				if exists {
-					subjects = append(subjects, util.Subject{
-						ID:   id,
-						Name: s.Text(),
-					})
-				}
-			}
-		})
-	})
-
-	err := c.PostRaw("https://selfservice.mun.ca/direct/bwckgens.p_proc_term_date", util.MapToBytes(map[string]any{
-		"p_calling_proc": "bwckschd.p_disp_dyn_sched",
-		"p_term":         strconv.Itoa(semester),
-	}))
+func GetSubjects(semester util.Semester) ([]util.Subject, error) {
+	resp, err := http.Get("https://self-service.mun.ca/StudentRegistrationSsb/ssb/classSearch/get_subject?searchTerm=&term=" + strconv.Itoa(semester.ID) + "&offset=1&max=500")
 	if err != nil {
-		logger.Printf("Error getting subjects: %s\n", err.Error())
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	c.Wait()
+	var subjects []util.Subject
 
-	return subjects
+	err = json.Unmarshal(body, &subjects)
+	if err != nil {
+		return nil, err
+	}
+
+	return subjects, nil
 }

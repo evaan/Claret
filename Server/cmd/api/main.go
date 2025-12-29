@@ -125,14 +125,6 @@ func StartAPI(db *gorm.DB, rdb *redis.Client, enableLimit bool, limit string) {
 		api.FrontendHandler(c, db, rdb)
 	})
 
-	r.GET("/seats/:semester/:crn", func(c *gin.Context) {
-		api.SeatsHandler(c, db, rdb)
-	})
-
-	r.GET("/seats", func(c *gin.Context) {
-		api.SeatsHandler(c, db, rdb)
-	})
-
 	r.GET("/claret.ics", func(c *gin.Context) {
 		api.ICalHandler(c, db)
 	})

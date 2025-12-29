@@ -1,244 +1,178 @@
 package scrapers
 
 import (
-	"log"
-	"os"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
 	"slices"
 	"strconv"
-	"strings"
-	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/evaan/Claret/internal/util"
-	"github.com/gocolly/colly/v2"
 )
 
-func ParseCourse(logger *log.Logger, e *colly.HTMLElement, semester int, subject string) (util.Course, []util.CourseTime, []util.Professor, []util.CourseInstructor) {
-	title := e.Text
-	body := e.DOM.Parent().Next().Text()
+func GetCourses(client *http.Client, semester util.Semester) ([]util.Course, error) {
+	err := SaveTerm(client, semester)
+	if err != nil {
+		return nil, err
+	}
 
-	semesterStr := strconv.Itoa(semester)
+	err = SendSearch(client, semester)
+	if err != nil {
+		return nil, err
+	}
 
-	var course util.Course
+	courses := make([]util.Course, 0)
+	items := 1
+	offset := 0
 
-	course.SemesterID = semester
-	course.SubjectID = subject
+	for items > len(courses) {
+		resp, err := client.Get("https://self-service.mun.ca/StudentRegistrationSsb/ssb/searchResults/searchResults?txt_subject=&txt_term=" + strconv.Itoa(semester.ID) + "&uniqueSessionId=claret&pageOffset=" + strconv.Itoa(offset) + "&pageMaxSize=500&sortColumn=subjectDescription&sortDirection=asc")
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
 
-	segments := strings.Split(title, " - ")
+		if resp.StatusCode != 200 {
+			return nil, errors.New("Recieved status code " + strconv.Itoa(resp.StatusCode) + " when requesting courses")
+		}
 
-	n := len(segments)
-	course.Section = segments[n-1]
-	course.ID = segments[n-2]
-	course.CRN = segments[n-3]
-	course.Key = semesterStr + course.CRN
-	course.Name = strings.Join(segments[:n-3], " - ")
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
 
-	for i, line := range strings.Split(body, "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			if i == 2 {
-				if !strings.HasPrefix(line, "Associated Term") {
-					course.Comment = &line
-				}
-			}
-			if strings.HasPrefix(line, "Levels:") {
-				course.Levels = strings.TrimSpace(strings.TrimPrefix(line, "Levels:"))
-			} else if strings.HasPrefix(line, "Registration Dates:") {
-				course.RegistrationDates = strings.TrimSpace(strings.TrimPrefix(line, "Registration Dates: "))
-			}
-			if strings.HasSuffix(line, "Credits") { // get credits from course
-				course.Credits = util.GetCredits(logger, line)
-			} else if strings.HasSuffix(line, "Campus") { // get course campus
-				course.Campus = strings.TrimSuffix(line, " Campus")
-			}
+		var searchResults struct {
+			Data []struct {
+				CourseReferenceNumber   string  `json:"courseReferenceNumber"`
+				Subject                 string  `json:"subject"`
+				CourseNumber            string  `json:"courseNumber"`
+				CourseTitle             string  `json:"courseTitle"`
+				CreditHours             float32 `json:"creditHours"`
+				CampusDescription       string  `json:"campusDescription"`
+				SequenceNumber          string  `json:"sequenceNumber"`
+				ScheduleTypeDescription string  `json:"scheduleTypeDescription"`
+			} `json:"data"`
+			SectionsFetchedCount int `json:"sectionsFetchedCount"`
+		}
+
+		err = json.Unmarshal(body, &searchResults)
+		if err != nil {
+			return nil, err
+		}
+
+		if items != searchResults.SectionsFetchedCount {
+			items = searchResults.SectionsFetchedCount
+		}
+		offset += len(searchResults.Data)
+
+		for _, courseData := range searchResults.Data {
+			courses = append(courses, util.Course{
+				Key:        strconv.Itoa(semester.ID) + courseData.CourseReferenceNumber,
+				ID:         courseData.Subject + " " + courseData.CourseNumber,
+				Name:       courseData.CourseTitle,
+				CRN:        courseData.CourseReferenceNumber,
+				Section:    courseData.SequenceNumber,
+				Credits:    courseData.CreditHours,
+				SubjectID:  courseData.Subject,
+				SemesterID: semester.ID,
+				Type:       courseData.ScheduleTypeDescription,
+			})
 		}
 	}
 
-	var schedule []string
-
-	e.DOM.Parent().Next().Find("table.datadisplaytable").First().Find("td.dddefault").Each(func(i int, sel *goquery.Selection) {
-		schedule = append(schedule, strings.TrimSpace(strings.TrimPrefix(sel.Text(), "(P)")))
-	})
-
-	var courseTimes []util.CourseTime
-	var professors []util.Professor
-	var courseInstructors []util.CourseInstructor
-
-	types := make([]string, 0)
-
-	// iterate through course time table
-	for i := range len(schedule) / 7 {
-		var courseTime util.CourseTime
-		courseTime.CourseKey = course.Key
-		// get time, some courses are TBA rather than "12:00 am - 12:01 am" because banner is an amazing piece of software
-		if schedule[i*7+1] == "TBA" {
-			courseTime.StartTime = "00:00"
-			courseTime.EndTime = "00:01"
-			courseTime.CourseCRN = course.CRN
-			courseTime.SemesterID = course.SemesterID
-		} else {
-			times := strings.Split(schedule[i*7+1], " - ")
-			startTime, err := time.Parse("3:04 pm", times[0])
-			if err != nil {
-				logger.Printf("Error scraping course time: %s\n", err.Error())
-				util.SendErrorToWebhook(os.Getenv("SCRAPER_WEBHOOK_URL"), err)
-				continue
-			}
-			courseTime.StartTime = startTime.Format("15:04")
-			endTime, err := time.Parse("3:04 pm", times[1])
-			if err != nil {
-				logger.Printf("Error scraping course time: %s\n", err.Error())
-				util.SendErrorToWebhook(os.Getenv("SCRAPER_WEBHOOK_URL"), err)
-				continue
-			}
-			courseTime.EndTime = endTime.Format("15:04")
-			courseTime.CourseCRN = course.CRN
-			courseTime.SemesterID = course.SemesterID
-		}
-		if schedule[i*7+2] != "" {
-			days := schedule[i*7+2]
-			courseTime.Days = &days
-		}
-		courseTime.Location = util.ReplaceBuildingName(schedule[i*7+3])
-		courseTime.DateRange = schedule[i*7+4]
-		if course.DateRange == nil {
-			dateRange := courseTime.DateRange
-			course.DateRange = &dateRange
-		}
-		courseTime.Type = schedule[i*7+5]
-		if !slices.Contains(types, schedule[i*7+5]) {
-			types = append(types, schedule[i*7+5])
-		}
-		instructors := schedule[i*7+6]
-		if instructors != "TBA" {
-			for _, instructor := range strings.Split(instructors, ", ") {
-				professors = append(professors, util.Professor{Name: instructor})
-				courseInstructors = append(courseInstructors, util.CourseInstructor{CourseKey: course.Key, ProfessorName: instructor})
-			}
-		}
-
-		courseTimes = append(courseTimes, courseTime)
-	}
-
-	if len(types) == 0 {
-		course.Types = "No Activity"
-	} else {
-		course.Types = strings.Join(types, ", ")
-	}
-
-	return course, courseTimes, professors, courseInstructors
+	return courses, nil
 }
 
-func GetCoursesWithCourse(logger *log.Logger, semester int, subject string, course string) ([]util.Course, []util.CourseTime, []util.Professor, []util.CourseInstructor) {
-	c := colly.NewCollector()
-
-	semesterStr := strconv.Itoa(semester)
-
-	var courses []util.Course
-	var courseTimes []util.CourseTime
-	var professors []util.Professor
-	var courseInstructors []util.CourseInstructor
-
-	c.OnHTML("th.ddtitle", func(e *colly.HTMLElement) {
-		course, times, profs, instructors := ParseCourse(logger, e, semester, subject)
-		courses = append(courses, course)
-		courseTimes = append(courseTimes, times...)
-		professors = append(professors, profs...)
-		courseInstructors = append(courseInstructors, instructors...)
-	})
-
-	err := c.PostRaw("https://selfservice.mun.ca/direct/bwckschd.p_get_crse_unsec", util.MapToBytes(map[string]any{
-		"term_in":       semesterStr,
-		"sel_subj":      []string{"dummy", subject},
-		"sel_day":       "dummy",
-		"sel_schd":      []string{"dummy", "%"},
-		"sel_insm":      []string{"dummy", "%"},
-		"sel_camp":      []string{"dummy", "%"},
-		"sel_levl":      []string{"dummy", "%"},
-		"sel_sess":      []string{"dummy", "%"},
-		"sel_instr":     []string{"dummy", "%"},
-		"sel_ptrm":      []string{"dummy", "%"},
-		"sel_attr":      []string{"dummy", "%"},
-		"sel_crse":      course,
-		"sel_title":     "",
-		"sel_from_cred": "",
-		"sel_to_cred":   "",
-		"begin_hh":      "0",
-		"begin_mi":      "0",
-		"begin_ap":      "a",
-		"end_hh":        "0",
-		"end_mi":        "0",
-		"end_ap":        "a",
-	}))
+func GetMeetingTimes(semester util.Semester, crn string) ([]util.CourseTime, []string, error) {
+	resp, err := http.Get("https://self-service.mun.ca/StudentRegistrationSsb/ssb/searchResults/getFacultyMeetingTimes?term=" + strconv.Itoa(semester.ID) + "&courseReferenceNumber=" + crn)
 	if err != nil {
-		logger.Printf("Error getting courses: %s\n", err.Error())
+		return nil, nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, nil, errors.New("Recieved status code " + strconv.Itoa(resp.StatusCode) + " when requesting course info")
 	}
 
-	c.Wait()
-
-	return courses, courseTimes, util.Unique(professors), courseInstructors
-}
-
-func GetCourses(logger *log.Logger, semester int, subject string) ([]util.Course, []util.CourseTime, []util.Professor, []util.CourseInstructor) {
-	c := colly.NewCollector()
-
-	semesterStr := strconv.Itoa(semester)
-
-	var courses []util.Course
-	var courseTimes []util.CourseTime
-	var professors []util.Professor
-	var courseInstructors []util.CourseInstructor
-
-	c.OnHTML("th.ddtitle", func(e *colly.HTMLElement) {
-		course, times, profs, instructors := ParseCourse(logger, e, semester, subject)
-		courses = append(courses, course)
-		courseTimes = append(courseTimes, times...)
-		professors = append(professors, profs...)
-		courseInstructors = append(courseInstructors, instructors...)
-	})
-
-	err := c.PostRaw("https://selfservice.mun.ca/direct/bwckschd.p_get_crse_unsec", util.MapToBytes(map[string]any{
-		"term_in":       semesterStr,
-		"sel_subj":      []string{"dummy", subject},
-		"sel_day":       "dummy",
-		"sel_schd":      []string{"dummy", "%"},
-		"sel_insm":      []string{"dummy", "%"},
-		"sel_camp":      []string{"dummy", "%"},
-		"sel_levl":      []string{"dummy", "%"},
-		"sel_sess":      []string{"dummy", "%"},
-		"sel_instr":     []string{"dummy", "%"},
-		"sel_ptrm":      []string{"dummy", "%"},
-		"sel_attr":      []string{"dummy", "%"},
-		"sel_crse":      "",
-		"sel_title":     "",
-		"sel_from_cred": "",
-		"sel_to_cred":   "",
-		"begin_hh":      "0",
-		"begin_mi":      "0",
-		"begin_ap":      "a",
-		"end_hh":        "0",
-		"end_mi":        "0",
-		"end_ap":        "a",
-	}))
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logger.Printf("Error getting courses: %s\n", err.Error())
+		return nil, nil, err
 	}
 
-	c.Wait()
+	var meetingTimes struct {
+		Fmt []struct {
+			Faculty []struct {
+				DisplayName string `json:"displayName"`
+			} `json:"faculty"`
+			MeetingTime struct {
+				BeginTime              string `json:"beginTime"`
+				EndTime                string `json:"endTime"`
+				StartDate              string `json:"startDate"`
+				EndDate                string `json:"endDate"`
+				Building               string `json:"building"`
+				Room                   string `json:"room"`
+				MeetingTypeDescription string `json:"meetingTypeDescription"`
+				Monday                 bool   `json:"monday"`
+				Tuesday                bool   `json:"tuesday"`
+				Wednesday              bool   `json:"wednesday"`
+				Thursday               bool   `json:"thursday"`
+				Friday                 bool   `json:"friday"`
+				Saturday               bool   `json:"saturday"`
+				Sunday                 bool   `json:"sunday"`
+			} `json:"meetingTime"`
+		} `json:"fmt"`
+	}
 
-	if len(courses) >= 101 {
-		courses = nil
-		courseTimes = nil
-		professors = nil
-		courseInstructors = nil
-		for i := 0; i <= 9; i++ {
-			courses1, times, profs, instructors := GetCoursesWithCourse(logger, semester, subject, strconv.Itoa(i))
-			courses = append(courses, courses1...)
-			courseTimes = append(courseTimes, times...)
-			professors = append(professors, profs...)
-			courseInstructors = append(courseInstructors, instructors...)
+	err = json.Unmarshal(body, &meetingTimes)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	instructors := make([]string, 0)
+	courseTimes := make([]util.CourseTime, 0)
+
+	for _, meetingTime := range meetingTimes.Fmt {
+		for _, instructor := range meetingTime.Faculty {
+			if !slices.Contains(instructors, instructor.DisplayName) {
+				instructors = append(instructors, instructor.DisplayName)
+			}
 		}
+		if len(meetingTime.MeetingTime.BeginTime) == 0 || len(meetingTime.MeetingTime.EndTime) == 0 {
+			continue
+		}
+		var days string
+		if meetingTime.MeetingTime.Monday {
+			days += "M"
+		}
+		if meetingTime.MeetingTime.Tuesday {
+			days += "T"
+		}
+		if meetingTime.MeetingTime.Wednesday {
+			days += "W"
+		}
+		if meetingTime.MeetingTime.Thursday {
+			days += "R"
+		}
+		if meetingTime.MeetingTime.Friday {
+			days += "F"
+		}
+		if meetingTime.MeetingTime.Saturday {
+			days += "S"
+		}
+		if meetingTime.MeetingTime.Sunday {
+			days += "U"
+		}
+		courseTimes = append(courseTimes, util.CourseTime{
+			StartTime: meetingTime.MeetingTime.BeginTime[:2] + ":" + meetingTime.MeetingTime.BeginTime[2:],
+			EndTime:   meetingTime.MeetingTime.EndTime[:2] + ":" + meetingTime.MeetingTime.EndTime[2:],
+			Days:      &days,
+			Location:  meetingTime.MeetingTime.Building + " " + meetingTime.MeetingTime.Room,
+			DateRange: meetingTime.MeetingTime.StartDate + " - " + meetingTime.MeetingTime.EndDate,
+			Type:      meetingTime.MeetingTime.MeetingTypeDescription,
+			CourseKey: strconv.Itoa(semester.ID) + crn,
+		})
 	}
 
-	return courses, courseTimes, util.Unique(professors), courseInstructors
+	return courseTimes, instructors, nil
 }

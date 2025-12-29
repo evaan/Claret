@@ -1,6 +1,6 @@
 export interface Subject {
-    id: string;
-    name: string;
+    code: string;
+    description: string;
 }
 
 export interface Semester {
@@ -13,21 +13,15 @@ export interface Semester {
 }
 
 export interface Course {
-    crn: string;
     id: string;
     name: string;
+    crn: string;
     section: string;
-    dateRange: string;
-    type: string;
-    instructor: string;
-    subjectFull: string;
-    subject: string;
-    campus: string;
-    comment: string;
     credits: number;
-    semester: number;
-    level: string;
-    identifier: string;
+    campus: string;
+    subject: string;
+    instructor: string;
+    type: string;
 }
 
 export interface Time {

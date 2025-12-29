@@ -10,27 +10,23 @@ type Semester struct {
 }
 
 type Subject struct {
-	ID   string `gorm:"primaryKey;not null" json:"id"`
-	Name string `gorm:"not null" json:"name"`
+	ID   string `gorm:"primaryKey;not null" json:"code"`
+	Name string `gorm:"not null" json:"description"`
 }
 
 type Course struct {
-	Key               string `gorm:"primaryKey"`
-	ID                string `gorm:"not null"`
-	Name              string `gorm:"not null"`
-	CRN               string `gorm:"not null"`
-	Section           string `gorm:"not null"`
-	Credits           int    `gorm:"not null"`
-	Campus            string `gorm:"not null"`
-	DateRange         *string
-	SubjectID         string   `gorm:"not null"`
-	Subject           Subject  `gorm:"constraint:OnDelete:CASCADE;"`
-	SemesterID        int      `gorm:"not null"`
-	Semester          Semester `gorm:"constraint:OnDelete:CASCADE;"`
-	Comment           *string
-	Levels            string `gorm:"not null"`
-	RegistrationDates string `json:"registrationDates"`
-	Types             string `gorm:"not null"`
+	Key        string   `gorm:"primaryKey"`
+	ID         string   `gorm:"not null"`
+	Name       string   `gorm:"not null"`
+	CRN        string   `gorm:"not null"`
+	Section    string   `gorm:"not null"`
+	Credits    float32  `gorm:"not null"`
+	Campus     string   `gorm:"not null"`
+	Type       string   `gorm:"not null"`
+	SubjectID  string   `gorm:"not null"`
+	Subject    Subject  `gorm:"constraint:OnDelete:CASCADE;"`
+	SemesterID int      `gorm:"not null"`
+	Semester   Semester `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 type CourseSeating struct {
@@ -53,50 +49,38 @@ type SeatingInfo struct {
 }
 
 type CourseAPI struct {
-	ID                string  `json:"id"`
-	Name              string  `json:"name"`
-	CRN               string  `json:"crn"`
-	Section           string  `json:"section"`
-	Credits           int     `json:"credits"`
-	Campus            string  `json:"campus"`
-	DateRange         *string `json:"dateRange"`
-	SubjectId         string  `json:"subject"`
-	Comment           *string `json:"comment"`
-	Levels            string  `json:"level"`
-	RegistrationDates string  `json:"registrationDates"`
-	Types             string  `json:"type"`
-	Instructor        string  `json:"instructor"`
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	CRN        string  `json:"crn"`
+	Section    string  `json:"section"`
+	Credits    float32 `json:"credits"`
+	Campus     string  `json:"campus"`
+	SubjectId  string  `json:"subject"`
+	Instructor string  `json:"instructor"`
 }
 
 type CourseFrontendAPI struct {
-	ID                string  `json:"id"`
-	Name              string  `json:"name"`
-	CRN               string  `json:"crn"`
-	Section           string  `json:"section"`
-	Credits           int     `json:"credits"`
-	Campus            string  `json:"campus"`
-	DateRange         *string `json:"dateRange"`
-	SubjectId         string  `json:"subject"`
-	Comment           *string `json:"comment"`
-	Levels            string  `json:"level"`
-	RegistrationDates string  `json:"registrationDates"`
-	Types             string  `json:"type"`
-	Instructor        string  `gorm:"column:instructor" json:"instructor"`
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	CRN        string  `json:"crn"`
+	Section    string  `json:"section"`
+	Credits    float32 `json:"credits"`
+	Campus     string  `json:"campus"`
+	SubjectId  string  `json:"subject"`
+	Instructor string  `gorm:"column:instructor" json:"instructor"`
+	Type       string  `json:"type"`
 }
 
 type CourseTime struct {
-	ID         int    `gorm:"primaryKey;autoIncrement"`
-	StartTime  string `gorm:"not null"`
-	EndTime    string `gorm:"not null"`
-	Days       *string
-	Location   string `gorm:"not null"`
-	DateRange  string `gorm:"not null"`
-	Type       string `gorm:"not null"`
-	CourseKey  string `gorm:"not null"`
-	CourseCRN  string
-	Course     Course `gorm:"constraint:OnDelete:CASCADE;"`
-	SemesterID int
-	Semester   Semester `gorm:"constraint:OnDelete:CASCADE;"`
+	ID        int    `gorm:"primaryKey;autoIncrement"`
+	StartTime string `gorm:"not null"`
+	EndTime   string `gorm:"not null"`
+	Days      *string
+	Location  string `gorm:"not null"`
+	DateRange string `gorm:"not null"`
+	Type      string `gorm:"not null"`
+	CourseKey string `gorm:"not null"`
+	Course    Course `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 type CourseTimeAPI struct {
@@ -133,7 +117,7 @@ type CourseTimeFrontendAPI struct {
 	Location  string  `json:"location"`
 	DateRange string  `json:"dateRange"`
 	Type      string  `json:"type"`
-	CourseCRN string  `json:"crn"`
+	CourseKey string  `json:"key"`
 }
 
 type Professor struct {
@@ -174,11 +158,8 @@ type ProfessorRatingAPI struct {
 
 type FrontendAPIResponse struct {
 	Courses  []CourseFrontendAPI     `json:"courses"`
-	Profs    []ProfessorRatingAPI    `json:"profs"`
 	Subjects []Subject               `json:"subjects"`
-	Seatings []CourseSeatingResponse `json:"seatings"`
 	Times    []CourseTimeFrontendAPI `json:"times"`
-	Exams    []ExamTimeAPI           `json:"exams"`
 }
 
 type ExamTime struct {

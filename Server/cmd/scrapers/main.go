@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -18,6 +20,18 @@ import (
 )
 
 func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
+	jsession, err := scrapers.GetJsession()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar}
+	baseUrl, _ := url.Parse("https://self-service.mun.ca")
+	jar.SetCookies(baseUrl, []*http.Cookie{
+		{Name: "JSESSIONID", Value: jsession, Path: "/StudentRegistrationSsb"},
+	})
+
 	startTime := time.Now()
 	coursesScraped := 0
 	logger := log.Default()
@@ -25,9 +39,14 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 
 	logger.Println("⭐ Scraping Started!")
 
-	var profs []string
+	// var profs []string
 
-	for _, semester := range scrapers.GetSemesters(logger) {
+	semesters, err := scrapers.GetSemesters()
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	for _, semester := range semesters {
 		if semester.ViewOnly && !scrapeAll {
 			continue
 		}
@@ -39,39 +58,49 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 		}
 		logger.Println("📝 Processing Semester: " + semester.Name + " (" + strconv.Itoa(semester.ID) + ")")
 		db.Create(&semester)
-		for _, subject := range scrapers.GetSubjects(logger, semester.ID) {
-			db.FirstOrCreate(&subject)
-			logger.Println(" 📝 Processing " + subject.Name + " (" + subject.ID + ")")
-			courses, courseTimes, professors, courseInstructors := scrapers.GetCourses(logger, semester.ID, subject.ID)
-			for _, course := range courses {
-				db.Create(&course)
-				// db.Create(&util.CourseSeating{CourseKey: course.Key, Capacity: 0, Available: 0, Scraped: "Never"})
-				coursesScraped++
+		subjects, err := scrapers.GetSubjects(semester)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		for _, subject := range subjects {
+			db.Save(&subject)
+		}
+		courses, err := scrapers.GetCourses(client, semester)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		for _, course := range courses {
+			db.Create(&course)
+			coursesScraped++
+			meetingTimes, instructors, err := scrapers.GetMeetingTimes(semester, course.CRN)
+			if err != nil {
+				logger.Println(err)
+				continue
 			}
-			for _, time := range courseTimes {
-				db.Create(&time)
+			for _, meetingTime := range meetingTimes {
+				db.Create(&meetingTime)
 			}
-			for _, professor := range professors {
-				db.FirstOrCreate(&professor)
-				profs = append(profs, professor.Name)
-			}
-			for _, instructor := range courseInstructors {
-				db.Create(&instructor)
+			for _, instructor := range instructors {
+				db.Save(&util.Professor{Name: instructor})
+				db.Save(&util.CourseInstructor{
+					ProfessorName: instructor,
+					CourseKey:     course.Key,
+				})
 			}
 		}
-		logger.Println(" 📝 Processing Exams")
-		for _, exam := range scrapers.GetExams(semester.ID) {
-			db.Save(&exam)
-		}
+		// logger.Println(" 📝 Processing Exams")
+		// for _, exam := range scrapers.GetExams(semester.ID) {
+		// 	db.Save(&exam)
+		// }
 		rdb.Del(ctx, "frontend:"+strconv.Itoa(semester.ID))
 	}
 
-	logger.Println("⭐ RMP Scraping Started!")
+	// logger.Println("⭐ RMP Scraping Started!")
 
-	profRatings := scrapers.RMP(logger, profs)
-	for _, rating := range profRatings {
-		db.Save(&rating)
-	}
+	// profRatings := scrapers.RMP(logger, profs)
+	// for _, rating := range profRatings {
+	// 	db.Save(&rating)
+	// }
 
 	scrapingTime := time.Since(startTime)
 
