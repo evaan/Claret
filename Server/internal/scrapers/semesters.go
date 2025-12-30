@@ -3,6 +3,7 @@ package scrapers
 import (
 	"encoding/json"
 	"errors"
+	"html"
 	"io"
 	"net/http"
 	"strconv"
@@ -47,7 +48,7 @@ func GetSemesters() ([]util.Semester, error) {
 		}
 		semesters = append(semesters, util.Semester{
 			ID:       semesterInt,
-			Name:     strings.Replace(semester.Description, " (View Only)", "", 1),
+			Name:     html.UnescapeString(strings.Replace(semester.Description, " (View Only)", "", 1)),
 			Latest:   !foundLatest && !strings.Contains(semester.Description, "M"),
 			Medicine: strings.Contains(semester.Description, "Medicine"),
 			MI:       strings.Contains(semester.Description, "MI"),
