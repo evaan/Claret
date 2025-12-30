@@ -3,6 +3,7 @@ package scrapers
 import (
 	"encoding/json"
 	"errors"
+	"html"
 	"io"
 	"net/http"
 	"slices"
@@ -11,35 +12,36 @@ import (
 	"github.com/evaan/Claret/internal/util"
 )
 
-func GetCourses(client *http.Client, semester util.Semester) ([]util.Course, error) {
+func GetCourses(client *http.Client, semester util.Semester) ([]util.Course, []util.CourseSeating, error) {
 	err := SaveTerm(client, semester)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = SendSearch(client, semester)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	courses := make([]util.Course, 0)
+	seatings := make([]util.CourseSeating, 0)
 	items := 1
 	offset := 0
 
 	for items > len(courses) {
 		resp, err := client.Get("https://self-service.mun.ca/StudentRegistrationSsb/ssb/searchResults/searchResults?txt_subject=&txt_term=" + strconv.Itoa(semester.ID) + "&uniqueSessionId=claret&pageOffset=" + strconv.Itoa(offset) + "&pageMaxSize=500&sortColumn=subjectDescription&sortDirection=asc")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != 200 {
-			return nil, errors.New("Recieved status code " + strconv.Itoa(resp.StatusCode) + " when requesting courses")
+			return nil, nil, errors.New("Recieved status code " + strconv.Itoa(resp.StatusCode) + " when requesting courses")
 		}
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		var searchResults struct {
@@ -52,13 +54,17 @@ func GetCourses(client *http.Client, semester util.Semester) ([]util.Course, err
 				CampusDescription       string  `json:"campusDescription"`
 				SequenceNumber          string  `json:"sequenceNumber"`
 				ScheduleTypeDescription string  `json:"scheduleTypeDescription"`
+				MaximumEnrollment       int     `json:"maximumEnrollment"`
+				Enrollment              int     `json:"enrollment"`
+				WaitCapacity            int     `json:"waitCapacity"`
+				WaitAvailable           int     `json:"waitAvailable"`
 			} `json:"data"`
 			SectionsFetchedCount int `json:"sectionsFetchedCount"`
 		}
 
 		err = json.Unmarshal(body, &searchResults)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if items != searchResults.SectionsFetchedCount {
@@ -70,18 +76,27 @@ func GetCourses(client *http.Client, semester util.Semester) ([]util.Course, err
 			courses = append(courses, util.Course{
 				Key:        strconv.Itoa(semester.ID) + courseData.CourseReferenceNumber,
 				ID:         courseData.Subject + " " + courseData.CourseNumber,
-				Name:       courseData.CourseTitle,
-				CRN:        courseData.CourseReferenceNumber,
-				Section:    courseData.SequenceNumber,
+				Name:       html.UnescapeString(courseData.CourseTitle),
+				CRN:        html.UnescapeString(courseData.CourseReferenceNumber),
+				Section:    html.UnescapeString(courseData.SequenceNumber),
 				Credits:    courseData.CreditHours,
-				SubjectID:  courseData.Subject,
+				SubjectID:  html.UnescapeString(courseData.Subject),
 				SemesterID: semester.ID,
-				Type:       courseData.ScheduleTypeDescription,
+				Type:       html.UnescapeString(courseData.ScheduleTypeDescription),
+				Campus:     html.UnescapeString(courseData.CampusDescription),
+			})
+			seatings = append(seatings, util.CourseSeating{
+				Semester:    semester.ID,
+				CRN:         courseData.CourseReferenceNumber,
+				Seats:       courseData.Enrollment,
+				MaxSeats:    courseData.MaximumEnrollment,
+				Waitlist:    courseData.WaitAvailable,
+				MaxWaitlist: courseData.WaitCapacity,
 			})
 		}
 	}
 
-	return courses, nil
+	return courses, seatings, nil
 }
 
 func GetMeetingTimes(semester util.Semester, crn string) ([]util.CourseTime, []string, error) {
@@ -135,7 +150,7 @@ func GetMeetingTimes(semester util.Semester, crn string) ([]util.CourseTime, []s
 	for _, meetingTime := range meetingTimes.Fmt {
 		for _, instructor := range meetingTime.Faculty {
 			if !slices.Contains(instructors, instructor.DisplayName) {
-				instructors = append(instructors, instructor.DisplayName)
+				instructors = append(instructors, html.UnescapeString(instructor.DisplayName))
 			}
 		}
 		if len(meetingTime.MeetingTime.BeginTime) == 0 || len(meetingTime.MeetingTime.EndTime) == 0 {

@@ -20,7 +20,7 @@ type Course struct {
 	Name       string   `gorm:"not null"`
 	CRN        string   `gorm:"not null"`
 	Section    string   `gorm:"not null"`
-	Credits    float32  `gorm:"not null"`
+	Credits    float32  `gorm:"c null"`
 	Campus     string   `gorm:"not null"`
 	Type       string   `gorm:"not null"`
 	SubjectID  string   `gorm:"not null"`
@@ -30,22 +30,12 @@ type Course struct {
 }
 
 type CourseSeating struct {
-	Semester string      `json:"semester"`
-	CRN      string      `json:"crn"`
-	Seats    SeatingInfo `json:"seats"`
-	Waitlist SeatingInfo `json:"waitlist"`
-}
-
-type CourseSeatingResponse struct {
-	CRN      string      `json:"crn"`
-	Seats    SeatingInfo `json:"seats"`
-	Waitlist SeatingInfo `json:"waitlist"`
-}
-
-type SeatingInfo struct {
-	Capacity  int `json:"capacity"`
-	Actual    int `json:"actual"`
-	Remaining int `json:"remaining"`
+	Semester    int    `json:"semester"`
+	CRN         string `json:"crn"`
+	Seats       int    `json:"seats"`
+	MaxSeats    int    `json:"maxSeats"`
+	Waitlist    int    `json:"waitlist"`
+	MaxWaitlist int    `json:"maxWaitlist"`
 }
 
 type CourseAPI struct {
@@ -60,15 +50,15 @@ type CourseAPI struct {
 }
 
 type CourseFrontendAPI struct {
-	ID         string  `json:"id"`
-	Name       string  `json:"name"`
-	CRN        string  `json:"crn"`
-	Section    string  `json:"section"`
-	Credits    float32 `json:"credits"`
-	Campus     string  `json:"campus"`
-	SubjectId  string  `json:"subject"`
-	Instructor string  `gorm:"column:instructor" json:"instructor"`
-	Type       string  `json:"type"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	CRN         string   `json:"crn"`
+	Section     string   `json:"section"`
+	Credits     float32  `json:"credits"`
+	Campus      string   `json:"campus"`
+	SubjectId   string   `json:"subject"`
+	Instructors []string `json:"instructors"`
+	Type        string   `json:"type"`
 }
 
 type CourseTime struct {
@@ -117,7 +107,7 @@ type CourseTimeFrontendAPI struct {
 	Location  string  `json:"location"`
 	DateRange string  `json:"dateRange"`
 	Type      string  `json:"type"`
-	CourseKey string  `json:"key"`
+	CRN       string  `json:"crn"`
 }
 
 type Professor struct {
@@ -157,9 +147,11 @@ type ProfessorRatingAPI struct {
 }
 
 type FrontendAPIResponse struct {
-	Courses  []CourseFrontendAPI     `json:"courses"`
-	Subjects []Subject               `json:"subjects"`
-	Times    []CourseTimeFrontendAPI `json:"times"`
+	Courses    []CourseFrontendAPI     `json:"courses"`
+	Subjects   []Subject               `json:"subjects"`
+	Times      []CourseTimeFrontendAPI `json:"times"`
+	Seatings   []CourseSeating         `json:"seatings"`
+	Professors []ProfessorRatingAPI    `json:"profs"`
 }
 
 type ExamTime struct {

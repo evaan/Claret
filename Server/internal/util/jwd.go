@@ -1,10 +1,10 @@
 package util
 
 import (
-	"math"
+	"regexp"
+	"strings"
 )
 
-// https://rosettacode.org/wiki/Jaro-Winkler_distance#Go
 func jaroSim(str1, str2 string) float64 {
 	if len(str1) == 0 && len(str2) == 0 {
 		return 1
@@ -65,29 +65,47 @@ func jaroSim(str1, str2 string) float64 {
 		(matches-transpositions)/matches) / 3
 }
 
-// modified jaro winkler distance to count the first and last part of the name, prioritising the end.
-func mixedJaroWinklerDist(s, t string) float64 {
-	ls := len(s)
-	lt := len(t)
-	lmax := lt
-	if ls < lt {
-		lmax = ls
+func normalizeWords(name string) []string {
+	name = strings.TrimSpace(name)
+	if strings.Contains(name, ",") {
+		parts := strings.SplitN(name, ",", 2)
+		name = strings.TrimSpace(parts[1]) + " " + strings.TrimSpace(parts[0])
 	}
-	l := 0.0
-	for i := 1; i < int(math.Min(float64(6), float64(lmax))); i++ {
-		if s[len(s)-i] == t[len(t)-i] {
-			l++
+	name = strings.ToLower(name)
+	re := regexp.MustCompile(`[^\w\s]`)
+	name = re.ReplaceAllString(name, "")
+	words := strings.Fields(name)
+	return words
+}
+
+func mixedNameDistance(s, t string) float64 {
+	wordsS := normalizeWords(s)
+	wordsT := normalizeWords(t)
+
+	maxSim := 0.0
+	used := make([]bool, len(wordsT))
+
+	for _, ws := range wordsS {
+		best := 0.0
+		bestIndex := -1
+		for i, wt := range wordsT {
+			if used[i] {
+				continue
+			}
+			sim := jaroSim(ws, wt)
+			if sim > best {
+				best = sim
+				bestIndex = i
+			}
+		}
+		if bestIndex >= 0 {
+			used[bestIndex] = true
+			maxSim += best
 		}
 	}
-	for i := 1; i < int(math.Min(float64(2), float64(lmax))); i++ {
-		if s[i] != t[i] {
-			l -= 2
-		}
-	}
-	js := jaroSim(s, t)
-	p := 0.1
-	ws := (1 - js) - float64(l)*p*(1-js)
-	return ws
+
+	avgSim := maxSim / float64(len(wordsS))
+	return 1.0 - avgSim
 }
 
 type NameAndDistance struct {
@@ -96,11 +114,11 @@ type NameAndDistance struct {
 }
 
 func ClosestName(names []string, name string) NameAndDistance {
-	closest := &NameAndDistance{Name: "", Distance: 2}
+	closest := &NameAndDistance{Name: "", Distance: 0}
 
 	for _, prof := range names {
-		dist := mixedJaroWinklerDist(prof, name)
-		if dist < closest.Distance && dist < 0.1 {
+		dist := 1.0 - mixedNameDistance(prof, name)
+		if dist > closest.Distance && dist > 0.9 {
 			closest.Name = prof
 			closest.Distance = dist
 		}

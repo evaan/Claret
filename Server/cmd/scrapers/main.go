@@ -3,13 +3,16 @@ package scrapers
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evaan/Claret/internal/scrapers"
@@ -39,7 +42,7 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 
 	logger.Println("⭐ Scraping Started!")
 
-	// var profs []string
+	var profs []string
 
 	semesters, err := scrapers.GetSemesters()
 	if err != nil {
@@ -65,7 +68,7 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 		for _, subject := range subjects {
 			db.Save(&subject)
 		}
-		courses, err := scrapers.GetCourses(client, semester)
+		courses, _, err := scrapers.GetCourses(client, semester)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -81,6 +84,9 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 				db.Create(&meetingTime)
 			}
 			for _, instructor := range instructors {
+				if !slices.Contains(profs, instructor) {
+					profs = append(profs, instructor)
+				}
 				db.Save(&util.Professor{Name: instructor})
 				db.Save(&util.CourseInstructor{
 					ProfessorName: instructor,
@@ -95,16 +101,16 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 		rdb.Del(ctx, "frontend:"+strconv.Itoa(semester.ID))
 	}
 
-	// logger.Println("⭐ RMP Scraping Started!")
+	logger.Println("⭐ RMP Scraping Started!")
 
-	// profRatings := scrapers.RMP(logger, profs)
-	// for _, rating := range profRatings {
-	// 	db.Save(&rating)
-	// }
+	profRatings := scrapers.RMP(logger, profs)
+	for _, rating := range profRatings {
+		db.Save(&rating)
+	}
 
 	scrapingTime := time.Since(startTime)
 
-	logger.Println("✅ Scrape Complete in " + fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds())%60) + "!")
+	logger.Println("✅ Scrape Completed in " + fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds())%60) + "!")
 	logger.Printf("🚀 Courses scraped: %d", coursesScraped)
 
 	if webhookUrl != "" {
@@ -124,11 +130,60 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 	}
 }
 
+func ScrapeSeats(rdb *redis.Client) {
+	logger := log.Default()
+	ctx := context.Background()
+	startTime := time.Now()
+
+	logger.Println("🪑 Seat Scraping Started!")
+
+	jsession, err := scrapers.GetJsession()
+	if err != nil {
+		logger.Println(err)
+	}
+
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar}
+	baseUrl, _ := url.Parse("https://self-service.mun.ca")
+	jar.SetCookies(baseUrl, []*http.Cookie{
+		{Name: "JSESSIONID", Value: jsession, Path: "/StudentRegistrationSsb"},
+	})
+
+	semesters, err := scrapers.GetSemesters()
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	for _, semester := range semesters {
+		if !strings.Contains(semester.Name, "(View Only)") {
+			_, seatings, err := scrapers.GetCourses(client, semester)
+			if err != nil {
+				logger.Println(seatings)
+			}
+			for _, seating := range seatings {
+				seatingJson, err := json.Marshal(seating)
+				if err != nil {
+					logger.Println(err)
+				}
+				err = rdb.Set(ctx, "seats:"+strconv.Itoa(seating.Semester)+":"+seating.CRN, seatingJson, 10*time.Minute).Err()
+				if err != nil {
+					logger.Println(err)
+				}
+			}
+		}
+	}
+
+	scrapingTime := time.Since(startTime)
+	logger.Println("🪑 Seat Scraping Completed in " + fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds())%60) + "!")
+}
+
 func Entrypoint(db *gorm.DB, webhookURL string, scrapeAll bool, rdb *redis.Client) {
 	c := cron.New()
 
-	Scrape(db, webhookURL, scrapeAll, rdb)
+	go Scrape(db, webhookURL, scrapeAll, rdb)
+	go ScrapeSeats(rdb)
 
+	c.AddFunc("*/10 * * * *", func() { ScrapeSeats(rdb) })
 	c.AddFunc("30 4 * * 1", func() { Scrape(db, webhookURL, scrapeAll, rdb) })
 	c.Start()
 }

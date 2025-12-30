@@ -47,11 +47,11 @@ func GetSemesters() ([]util.Semester, error) {
 		}
 		semesters = append(semesters, util.Semester{
 			ID:       semesterInt,
-			Name:     strings.Replace(semester.Description, " (View only)", "", 1),
+			Name:     strings.Replace(semester.Description, " (View Only)", "", 1),
 			Latest:   !foundLatest && !strings.Contains(semester.Description, "M"),
 			Medicine: strings.Contains(semester.Description, "Medicine"),
 			MI:       strings.Contains(semester.Description, "MI"),
-			ViewOnly: strings.Contains(semester.Description, "(View only)"),
+			ViewOnly: strings.Contains(semester.Description, "(View Only)"),
 		})
 		if !foundLatest && !strings.Contains(semester.Description, "M") {
 			foundLatest = true
