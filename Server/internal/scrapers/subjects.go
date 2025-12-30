@@ -2,6 +2,7 @@ package scrapers
 
 import (
 	"encoding/json"
+	"html"
 	"io"
 	"net/http"
 	"strconv"
@@ -26,6 +27,10 @@ func GetSubjects(semester util.Semester) ([]util.Subject, error) {
 	err = json.Unmarshal(body, &subjects)
 	if err != nil {
 		return nil, err
+	}
+
+	for i := range subjects {
+		subjects[i].Name = html.UnescapeString(subjects[i].Name)
 	}
 
 	return subjects, nil
