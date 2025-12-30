@@ -24,7 +24,7 @@ export function SectionButton1(props: { section: Course }) {
   return (
     <div>
       <Button variant="link" style={{ width: "100%", paddingLeft: "8px" }} onClick={() => setModalOpen(true)}>
-        {props.section.id} - {props.section.crn} - {props.section.type} - {props.section.instructor}
+        {props.section.id} - {props.section.crn} - {props.section.type} - {[...new Set(props.section.instructors)].join ( " - ")}
       </Button>
       <SectionModal isOpen={modalOpen} onHide={closeModal} section={props.section} />
     </div>
@@ -223,9 +223,9 @@ export default function Schedule() {
               {selectedCourses.length === 0 ? "Copy Claret link to clipboard (No courses selected)" : isCopied ? "Copied!" : "Copy Claret link to clipboard"}
             </Button>
             <ExamModal isOpen={examModalOpen} onHide={closeExamModal} />
-            <Button className="w-100 mt-2" onClick={() => setExamModalOpen(true)} disabled={selectedCourses.length === 0}>
+            {/* <Button className="w-100 mt-2" onClick={() => setExamModalOpen(true)} disabled={selectedCourses.length === 0}>
               {selectedCourses.length === 0 ? "View final exam schedule (no courses selected)" : "View final exam schedule"}
-            </Button>
+            </Button> */}
           </Accordion.Body>
         </Accordion.Item>
       </Accordion>

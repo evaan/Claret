@@ -20,7 +20,7 @@ export interface Course {
     credits: number;
     campus: string;
     subject: string;
-    instructor: string;
+    instructors: string[];
     type: string;
 }
 
@@ -38,16 +38,10 @@ export interface Time {
 export interface Seating {
   semester: string;
   crn: string;
-  seats: {
-    capacity: number;
-    actual: number;
-    remaining: number;
-  };
-  waitlist: {
-    capacity: number;
-    actual: number;
-    remaining: number;
-  };
+  seats: number;
+  maxSeats: number;
+  waitlist: number;
+  maxWaitlist: number;
 }
 
 export interface Professor {

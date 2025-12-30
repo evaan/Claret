@@ -18,6 +18,7 @@ export default function SubjectAccordion(props: {subject: Subject, index: string
         if(!JSON.stringify(uniqueCourses).includes(course.id) && (subjectCourses.filter((course1: Course) => course.id == course.id && course1.name !== "Laboratory").length == 0 || course.name !== "Laboratory")) uniqueCourses.push([course.id, course.name, course.subject]);
     });
 
+
     return (
         <Accordion.Item eventKey={props.index}>
             <Accordion.Header>
@@ -33,8 +34,7 @@ export default function SubjectAccordion(props: {subject: Subject, index: string
                                     {course[0]} - {course[1]}
                                 </Accordion.Header>
                                 <Accordion.Body>
-                                    {courses.filter((section: Course) => course[0] === section.id && shouldShow(section, filters)).sort(function(a, b) {return (sortingOrder[a.type] ?? 0) - (sortingOrder[b.type] ?? 0);}).map((section: Course) => {
-                                        return (
+                                    {courses.filter((section: Course) => course[0] === section.id && shouldShow(section, filters)).sort(function(a, b) {return (sortingOrder[a.type] ?? 0) - (sortingOrder[b.type] ?? 0);}).map((section: Course) => {                                        return (
                                             <SectionButton section={section} key={section.crn} />
                                         );
                                     })}

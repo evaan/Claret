@@ -49,20 +49,16 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                 Make:    it
                 Like:    this
                 */}
-                {props.section.comment !== null &&
-                <p><strong>Comment:</strong> {props.section.comment}</p>}
                 <p><strong>CRN:</strong> {props.section.crn}</p>
                 <p><strong>Credit Hours:</strong> {props.section.credits}</p>
                 <p><strong>Section:</strong> {props.section.section}</p>
-                <p><strong>Level:</strong> {props.section.level}</p>
                 <p><strong>Campus:</strong> {props.section.campus}</p>
                 <p><strong>Type:</strong> {props.section.type !== null ? props.section.type : "Unknown"}</p>
-                <p><strong>Date Range:</strong> {props.section.dateRange !== null ? props.section.dateRange : "Unknown"}</p>
-                {props.section.instructor != null && props.section.instructor != "" && (
+                {props.section.instructors != null && props.section.instructors.length > 0 && (
                     <>
                         <p><strong>Instructors:</strong></p>
                         <ul className="m-0">
-                            {props.section.instructor.split(", ").map((instructor: string) => {
+                            {props.section.instructors.map((instructor: string) => {
                                 if (profs !== undefined && profs.filter((prof: Professor) => prof.name == instructor).length > 0) {
                                     const prof = profs.filter((prof: Professor) => prof.name == instructor)[0];
                                     return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/professor/${prof.id}`} rel="noreferrer" target="_blank">(RateMyProfessors Rating: {prof.rating}/5)</a>}</li>;
@@ -86,17 +82,11 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                 {seatings.filter((seating: Seating) => seating.crn == props.section.crn).map((seating: Seating) => {
                     return (
                         <div key={seating.crn}>
-                            <p><strong>Seats Available:</strong> <span className={Number(seating.seats.remaining) <= 0 ? "text-danger" : ""}>{seating.seats.remaining}/{seating.seats.capacity}</span></p>
-                            <p><strong>Waitlist Available:</strong> <span className={Number(seating.waitlist.remaining) <= 0 ? "text-danger" : ""}>{seating.waitlist.remaining}/{seating.waitlist.remaining}</span></p>
+                            <p><strong>Seats Available:</strong> <span className={Number(seating.maxSeats - seating.seats) <= 0 ? "text-danger" : ""}>{seating.maxSeats - seating.seats}/{seating.maxSeats}</span></p>
+                            <p><strong>Waitlist Available:</strong> <span className={Number(seating.waitlist) <= 0 ? "text-danger" : ""}>{seating.waitlist}/{seating.maxWaitlist}</span></p>
                         </div>
                     );
                 })}
-                {seatings.filter((seating: Seating) => seating.crn == props.section.crn).length == 0 &&
-                    <>
-                        <p><strong>Seats Available:</strong> Loading...</p>
-                        <p><strong>Waitlist Available:</strong> Loading...</p>
-                    </>
-                }
             </ModalBody>
             <ModalFooter>
                 <Button variant="secondary" onClick={() => props.onHide()}>Close</Button>
