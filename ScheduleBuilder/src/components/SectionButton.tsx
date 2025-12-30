@@ -8,7 +8,7 @@ import { Button } from "react-bootstrap";
 export function SectionButton(props: {section: Course}) {
     const [times] = useAtom(timesAtom);
     const [modalOpen, setModalOpen] = React.useState<boolean>(false);
-    const tmp = times.filter((time: Time) => time.crn === props.section.crn && time.days != null).map((time: Time) => ` - ${time.days}: ${time.startTime}-${time.endTime}`).join(", ");
+    const tmp = times.filter((time: Time) => time.crn === props.section.crn && time.days != null).map((time: Time) => ` - ${time.days}: ${time.startTime}-${time.endTime}`).join(", ").slice(0, -1);
 
     async function openModal() {
         setModalOpen(true);
@@ -19,7 +19,7 @@ export function SectionButton(props: {section: Course}) {
     return (
         <div>
             <Button variant={props.section.type == "Laboratory" ? "outline-primary" : "primary"} style={{width: "100%", marginBottom: "4px", color: "#fff"}} onClick={openModal}>
-                {`${props.section.type} ${tmp} ${!props.section.type.includes("Laboratory") && props.section.instructors.length <= 0 ? "- " + props.section.instructors.join(" - ") : ""}`}
+                {`${props.section.type} ${tmp} ${!props.section.type.includes("Laboratory") && props.section.instructors.length > 0 ? "- " + props.section.instructors.join(" - ") : ""}`}
             </Button>
             <SectionModal isOpen={modalOpen} onHide={closeModal} section={props.section}/>
         </div>
