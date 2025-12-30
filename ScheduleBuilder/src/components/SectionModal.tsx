@@ -58,7 +58,7 @@ export default function SectionModal(props: {isOpen: boolean; onHide: () => void
                     <>
                         <p><strong>Instructors:</strong></p>
                         <ul className="m-0">
-                            {props.section.instructors.map((instructor: string) => {
+                            {[...new Set(props.section.instructors)].map((instructor: string) => {
                                 if (profs !== undefined && profs.filter((prof: Professor) => prof.name == instructor).length > 0) {
                                     const prof = profs.filter((prof: Professor) => prof.name == instructor)[0];
                                     return <li key={instructor}>{instructor} {instructor !== "TBA" && <a href={`https://www.ratemyprofessors.com/professor/${prof.id}`} rel="noreferrer" target="_blank">(RateMyProfessors Rating: {prof.rating}/5)</a>}</li>;
