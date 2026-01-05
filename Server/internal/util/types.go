@@ -85,19 +85,18 @@ type CourseTimeAPI struct {
 }
 
 type CourseTimeICal struct {
-	ID              int
-	StartTime       string
-	EndTime         string
-	Days            *string
-	Location        string
-	DateRange       string
-	Type            string
-	CourseKey       string
-	CourseCRN       string
-	SemesterID      int
-	CourseID        string
-	CourseName      string
-	InstructorNames string
+	StartTime       string  `gorm:"column:start_time"`
+	EndTime         string  `gorm:"column:end_time"`
+	Days            *string `gorm:"column:days"`
+	Location        string  `gorm:"column:location"`
+	DateRange       string  `gorm:"column:date_range"`
+	Type            string  `gorm:"column:type"`
+	CourseKey       string  `gorm:"column:course_key"`
+	CourseCRN       string  `gorm:"column:course_crn"`
+	SemesterID      int     `gorm:"column:semester_id"`
+	CourseID        string  `gorm:"column:course_id"`
+	CourseName      string  `gorm:"column:course_name"`
+	InstructorNames string  `gorm:"column:instructor_names"`
 }
 
 type CourseTimeFrontendAPI struct {
