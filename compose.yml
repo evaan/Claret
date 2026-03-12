@@ -1,7 +1,6 @@
 services:
   traefik:
     image: traefik
-    container_name: traefik
     restart: always
     command:
       - "--providers.docker=true"
@@ -15,7 +14,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   nginx:
-    container_name: nginx
     build: ./ScheduleBuilder
     restart: always
     labels:
@@ -41,7 +39,6 @@ services:
       - ./redis-data:/data
 
   server:
-    container_name: server
     restart: always
     build: ./Server
     depends_on:
