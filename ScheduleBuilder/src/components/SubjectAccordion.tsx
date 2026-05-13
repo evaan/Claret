@@ -8,20 +8,21 @@ import { shouldShow } from "../api/functions";
 export default function SubjectAccordion(props: {subject: Subject, index: string,}) {
     const [filters] = useAtom(filterAtom);
     const [courses] = useAtom(coursesAtom);
-    const subjectCourses = courses.filter((course: Course) => course.subject === props.subject.id);
+    const subjectCourses = courses.filter((course: Course) => course.subject === props.subject.code);
     const uniqueCourses: [string, string, string][] = [];
     const [selectedTab] = useAtom(selectedTabAtom);
     const sortingOrder: {[name: string]: number} = {"Lecture": 1, "Laboratory": 2, "World Wide Web": 3};
     const [searchQuery] = useAtom(searchQueryAtom);
     
     subjectCourses.forEach((course: Course) => {
-        if(!JSON.stringify(uniqueCourses).includes(course.id) && (subjectCourses.filter((course1: Course) => course.id == course.id && course1.name !== "Laboratory").length == 0 || course.name !== "Laboratory")) uniqueCourses.push([course.id, course.name, course.subjectFull]);
+        if(!JSON.stringify(uniqueCourses).includes(course.id) && (subjectCourses.filter((course1: Course) => course.id == course.id && course1.name !== "Laboratory").length == 0 || course.name !== "Laboratory")) uniqueCourses.push([course.id, course.name, course.subject]);
     });
+
 
     return (
         <Accordion.Item eventKey={props.index}>
             <Accordion.Header>
-                {props.subject.name}
+                {props.subject.description}
             </Accordion.Header>
             <Accordion.Body>
                 {selectedTab.includes(props.index) &&
@@ -33,8 +34,7 @@ export default function SubjectAccordion(props: {subject: Subject, index: string
                                     {course[0]} - {course[1]}
                                 </Accordion.Header>
                                 <Accordion.Body>
-                                    {courses.filter((section: Course) => course[0] === section.id && shouldShow(section, filters)).sort(function(a, b) {return (sortingOrder[a.type] ?? 0) - (sortingOrder[b.type] ?? 0);}).map((section: Course) => {
-                                        return (
+                                    {courses.filter((section: Course) => course[0] === section.id && shouldShow(section, filters)).sort(function(a, b) {return (sortingOrder[a.type] ?? 0) - (sortingOrder[b.type] ?? 0);}).map((section: Course) => {                                        return (
                                             <SectionButton section={section} key={section.crn} />
                                         );
                                     })}

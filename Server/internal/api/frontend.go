@@ -13,16 +13,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// CoursesHandler godoc
-// @Summary Frontend
-// @Description Returns all data (courses, prof ratings, subjects, seats, times, and exams) for a specified semester (or latest for no semester)
-// @Accept json
-// @Produce json
-// @Param semester query string false "Semester ID (i.e. 202401)"
-// @Success 200 {object} util.FrontendAPIResponse
-// @Failure 400 {object} util.ErrorResponse
-// @Failure 500 {object} util.ErrorResponse
-// @Router /frontend [get]
 func FrontendHandler(c *gin.Context, db *gorm.DB, rdb *redis.Client) {
 	semesterStr := util.GetParamOrQuery(c, "semester")
 	var semester int
@@ -43,11 +33,11 @@ func FrontendHandler(c *gin.Context, db *gorm.DB, rdb *redis.Client) {
 	}
 
 	response := util.FrontendAPIResponse{
-		Courses:  make([]util.CourseFrontendAPI, 0),
-		Profs:    make([]util.ProfessorRatingAPI, 0),
-		Subjects: make([]util.Subject, 0),
-		Times:    make([]util.CourseTimeFrontendAPI, 0),
-		Exams:    make([]util.ExamTimeAPI, 0),
+		Courses:    make([]util.CourseFrontendAPI, 0),
+		Subjects:   make([]util.Subject, 0),
+		Times:      make([]util.CourseTimeFrontendAPI, 0),
+		Seatings:   make([]util.CourseSeating, 0),
+		Professors: make([]util.ProfessorRatingAPI, 0),
 	}
 
 	ctx := context.Background()
@@ -64,45 +54,93 @@ func FrontendHandler(c *gin.Context, db *gorm.DB, rdb *redis.Client) {
 			return
 		}
 
-		err = db.Raw(`SELECT c.id, c.name, c.crn, c.section, c.credits, c.campus, c.date_range, c.subject_id, c.semester_id, c.comment, c.levels, c.registration_dates, c.types,
-			STRING_AGG(DISTINCT ci.professor_name, ', ') AS instructor FROM courses c LEFT JOIN course_instructors ci ON ci.course_key = c.key
-			WHERE c.semester_id = ? GROUP BY c.id, c.name, c.crn, c.section, c.credits, c.campus, c.date_range, c.subject_id, c.semester_id, c.comment,
-			c.levels, c.registration_dates, c.types;`, semester).Scan(&response.Courses).Error
+		var courses []util.CourseFrontendAPI
+
+		err := db.Raw(`
+			SELECT
+				c.id,
+				c.name,
+				c.crn,
+				c.section,
+				c.credits,
+				c.campus,
+				c.subject_id,
+				c.type
+			FROM courses c
+			WHERE c.semester_id = ?
+		`, semester).Scan(&courses).Error
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		err = db.Raw(`SELECT DISTINCT pr.* FROM professor_ratings pr
-			JOIN course_instructors ci ON pr.professor_name = ci.professor_name
-			JOIN courses c ON ci.course_key = c.key
-			WHERE c.semester_id = ?`, semester).Scan(&response.Profs).Error
+		var instructorRows []struct {
+			CourseID   string `gorm:"column:course_id"`
+			Instructor string `gorm:"column:professor_name"`
+		}
+
+		err = db.Raw(`
+			SELECT
+				c.id AS course_id,
+				ci.professor_name
+			FROM courses c
+			JOIN course_instructors ci ON ci.course_key = c.key
+			WHERE c.semester_id = ?
+		`, semester).Scan(&instructorRows).Error
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		err = db.Raw(`SELECT DISTINCT s.*
+		instructorMap := make(map[string][]string)
+
+		for _, row := range instructorRows {
+			instructorMap[row.CourseID] =
+				append(instructorMap[row.CourseID], row.Instructor)
+		}
+
+		for i := range courses {
+			if instructors, ok := instructorMap[courses[i].ID]; ok {
+				courses[i].Instructors = instructors
+			} else {
+				courses[i].Instructors = []string{}
+			}
+		}
+
+		response.Courses = courses
+
+		err = db.Raw(`
+			SELECT DISTINCT s.*
 			FROM subjects s
 			JOIN courses c ON s.id = c.subject_id
-			WHERE c.semester_id = ?`, semester).Scan(&response.Subjects).Error
+			WHERE c.semester_id = ?
+		`, semester).Scan(&response.Subjects).Error
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		err = db.Raw(`SELECT DISTINCT
-			start_time, end_time, days, location, date_range,
-			type, course_crn, semester_id FROM course_times WHERE semester_id = ?`, semester).Scan(&response.Times).Error
+		err = db.Raw(`
+			SELECT
+				ct.start_time,
+				ct.end_time,
+				ct.days,
+				ct.location,
+				ct.date_range,
+				ct.type,
+				c.crn
+			FROM course_times ct
+			JOIN courses c ON c.key = ct.course_key
+			WHERE ct.course_key LIKE ? || '%'
+		`, strconv.Itoa(semester)).Scan(&response.Times).Error
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		err = db.Raw(`SELECT *
-			FROM exam_times et
-			JOIN courses c ON et.course_key = c.key
-			WHERE c.semester_id = ?`, semester).Scan(&response.Exams).Error
+		err = db.Raw(`SELECT * FROM professor_ratings`).Scan(&response.Professors).Error
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -114,38 +152,38 @@ func FrontendHandler(c *gin.Context, db *gorm.DB, rdb *redis.Client) {
 		}
 	}
 
-	response.Seatings = make([]util.CourseSeatingResponse, 0)
 	var cursor uint64
 	for {
-		var keys []string
-		keys, cursor, err = rdb.Scan(ctx, cursor, "seats:"+semesterStr+":*", 0).Result()
+		keys, newCursor, err := rdb.Scan(
+			ctx,
+			cursor,
+			"seats:"+semesterStr+":*",
+			1000,
+		).Result()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		for _, key := range keys {
-			val, err := rdb.Get(ctx, key).Result()
-			if err == redis.Nil {
-				continue
-			} else if err != nil {
+		if len(keys) > 0 {
+			vals, err := rdb.MGet(ctx, keys...).Result()
+			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
 
-			var seating util.CourseSeating
-			if err := json.Unmarshal([]byte(val), &seating); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
+			for _, v := range vals {
+				if v == nil {
+					continue
+				}
+				var seating util.CourseSeating
+				if err := json.Unmarshal([]byte(v.(string)), &seating); err == nil {
+					response.Seatings = append(response.Seatings, seating)
+				}
 			}
-
-			response.Seatings = append(response.Seatings, util.CourseSeatingResponse{
-				CRN:      seating.CRN,
-				Seats:    seating.Seats,
-				Waitlist: seating.Waitlist,
-			})
 		}
 
+		cursor = newCursor
 		if cursor == 0 {
 			break
 		}

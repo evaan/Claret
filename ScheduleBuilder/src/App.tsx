@@ -91,9 +91,9 @@ export default function App() {
                             if (event !== null) setSelectedTab([event, "-1"]);
                         }, 500);
                     }}>
-                        {subjects.sort(function(a, b) {if (a.name < b.name) return -1; else return 1;}).map((subject, index) => {
-                            if (courses.filter((course: Course) => course.subject == subject.id && shouldShow(course, filters) && (searchQuery == "" || course.id.toLowerCase().includes(searchQuery.toLowerCase()) || course.name.toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) {
-                                return (<SubjectAccordion subject={subject} index={subject.name} key={index} />);
+                        {subjects.sort(function(a, b) {if (a.description < b.description) return -1; else return 1;}).map((subject, index) => {
+                            if (courses.filter((course: Course) => course.subject == subject.code && shouldShow(course, filters) && (searchQuery == "" || course.id.toLowerCase().includes(searchQuery.toLowerCase()) || course.name.toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) {
+                                return (<SubjectAccordion subject={subject} index={subject.description} key={index} />);
                             }
                         })}
                     </Accordion>
