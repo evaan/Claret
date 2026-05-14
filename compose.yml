@@ -1,6 +1,7 @@
 services:
   traefik:
     image: traefik
+    container_name: traefik
     restart: always
     command:
       - "--providers.docker=true"
@@ -14,6 +15,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   nginx:
+    container_name: nginx
     build: ./ScheduleBuilder
     restart: always
     labels:
@@ -30,7 +32,7 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: claret
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - ./postgres-data:/var/lib/postgresql
 
   redis:
     image: redis:alpine
@@ -39,6 +41,7 @@ services:
       - ./redis-data:/data
 
   server:
+    container_name: server
     restart: always
     build: ./Server
     depends_on:
