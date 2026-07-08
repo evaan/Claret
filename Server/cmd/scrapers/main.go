@@ -183,7 +183,7 @@ func Entrypoint(db *gorm.DB, webhookURL string, scrapeAll bool, rdb *redis.Clien
 	go Scrape(db, webhookURL, scrapeAll, rdb)
 	go ScrapeSeats(rdb)
 
-	c.AddFunc("*/10 2-22 * * *", func() { ScrapeSeats(rdb) })
+	c.AddFunc("*/10 2-10,19-22 * * *", func() { ScrapeSeats(rdb) })
 	c.AddFunc("30 4 * * 1", func() { Scrape(db, webhookURL, scrapeAll, rdb) })
 	c.Start()
 }
