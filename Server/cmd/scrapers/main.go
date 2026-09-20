@@ -23,6 +23,11 @@ import (
 )
 
 func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
+	hour := time.Now().Hour()
+	if hour == 3 || hour == 4 {
+		return
+	}
+
 	jsession, err := scrapers.GetJsession()
 	if err != nil {
 		log.Fatalln(err)
@@ -131,6 +136,11 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 }
 
 func ScrapeSeats(rdb *redis.Client) {
+	hour := time.Now().Hour()
+	if hour == 3 || hour == 4 {
+		return
+	}
+
 	logger := log.Default()
 	ctx := context.Background()
 	startTime := time.Now()
@@ -183,7 +193,7 @@ func Entrypoint(db *gorm.DB, webhookURL string, scrapeAll bool, rdb *redis.Clien
 	go Scrape(db, webhookURL, scrapeAll, rdb)
 	go ScrapeSeats(rdb)
 
-	c.AddFunc("*/10 2-10,19-22 * * *", func() { ScrapeSeats(rdb) })
+	c.AddFunc("*/10 * * * *", func() { ScrapeSeats(rdb) })
 	c.AddFunc("30 4 * * 1", func() { Scrape(db, webhookURL, scrapeAll, rdb) })
 	c.Start()
 }
