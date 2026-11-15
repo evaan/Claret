@@ -24,7 +24,8 @@ export function SectionButton1(props: { section: Course }) {
   return (
     <div>
       <Button variant="link" style={{ width: "100%", paddingLeft: "8px" }} onClick={() => setModalOpen(true)}>
-        {props.section.id} - {props.section.crn} - {props.section.type} - {[...new Set(props.section.instructors)].join ( " - ")}
+        {props.section.id} - {props.section.name} - {props.section.crn} - {props.section.type}
+        {props.section.instructors.length > 0 && ` - ${[...new Set(props.section.instructors)].join(" - ")}`}
       </Button>
       <SectionModal isOpen={modalOpen} onHide={closeModal} section={props.section} />
     </div>
