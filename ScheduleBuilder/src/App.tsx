@@ -8,6 +8,8 @@ import Schedule from "./components/Schedule";
 import { shouldShow } from "./api/functions";
 import SearchBar from "./components/SearchBar";
 
+const apiUrl = import.meta.env.VITE_API_URL || (process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080");
+
 export default function App() {
     const [subjects, setSubjects] = useAtom(subjectsAtom);
     const [courses, setCourses] = useAtom(coursesAtom);
@@ -24,7 +26,7 @@ export default function App() {
     const [semesters, setSemesters] = React.useState<Semester[]>([]);
 
     React.useEffect(() => {
-        fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/semesters").then(response => response.json()).then((data: Semester[]) => {
+        fetch(apiUrl+"/semesters").then(response => response.json()).then((data: Semester[]) => {
             setSemesters(data);
             const params = new URLSearchParams(window.location.search);
             const semester: Semester = data.find((s: Semester) => s.id.toString() === params.get("semester")) ?? data.find((s: Semester) => s.latest)!;
@@ -37,7 +39,7 @@ export default function App() {
 
     React.useEffect(() => {
         if (selectedSemester == null) return;
-        fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/frontend?semester=" + selectedSemester.id).then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[], profs: Professor[], exams: ExamTime[]}) => {
+        fetch(apiUrl+"/frontend?semester=" + selectedSemester.id).then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[], profs: Professor[], exams: ExamTime[]}) => {
             setSubjects(data.subjects);
             setCourses(data.courses);
             setTimes(data.times);
