@@ -9,8 +9,7 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--providers.docker.exposedbydefault=false"
     ports:
-      - 80:80
-      - 443:443
+      - 8181:80
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -22,11 +21,10 @@ services:
       - traefik.enable=true
       - traefik.port=80
       - traefik.http.routers.nginx.rule=Host(`claretformun.com`) || Host(`www.claretformun.com`)
-      - traefik.http.routers.nginx.entrypoints=websecure
-      - traefik.http.routers.nginx.tls=true
+      - traefik.http.routers.nginx.entrypoints=web
 
   postgres:
-    image: postgres:19-alpine
+    image: postgres:alpine
     restart: always
     environment:
       POSTGRES_PASSWORD: admin
@@ -47,8 +45,6 @@ services:
     depends_on:
       - postgres
       - redis
-    ports:
-      - "8080:8080"
     environment:
       POSTGRES_URL: "postgresql://postgres:admin@postgres:5432/claret"
       REDIS_URL: "redis:6379"
@@ -65,5 +61,5 @@ services:
       - traefik.enable=true
       - traefik.port=8080
       - traefik.http.routers.api.rule=Host(`api.claretformun.com`)
-      - traefik.http.routers.api.entrypoints=websecure
-      - traefik.http.routers.api.tls=true
+      - traefik.http.routers.api.entrypoints=web
+      - traefik.http.services.api.loadbalancer.server.port=8080
