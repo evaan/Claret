@@ -1,5 +1,7 @@
 package util
 
+import "time"
+
 type Semester struct {
 	ID       int    `gorm:"primaryKey" json:"id"`
 	Name     string `gorm:"not null" json:"name"`
@@ -15,12 +17,13 @@ type Subject struct {
 }
 
 type Course struct {
+	CourseDetails
 	Key        string   `gorm:"primaryKey"`
 	ID         string   `gorm:"not null"`
 	Name       string   `gorm:"not null"`
 	CRN        string   `gorm:"not null"`
 	Section    string   `gorm:"not null"`
-	Credits    float32  `gorm:"c null"`
+	Credits    float32  `gorm:"not null"` // Self-Service creditHours for this section, including credit-bearing labs.
 	Campus     string   `gorm:"not null"`
 	Type       string   `gorm:"not null"`
 	SubjectID  string   `gorm:"not null"`
@@ -29,16 +32,72 @@ type Course struct {
 	Semester   Semester `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
+// CourseDetails contains section metadata supplied by Memorial Self-Service.
+// CreditsMin/Max preserve Self-Service's course-level creditHourLow/High.
+// They must not override a section's Credits: lectures and zero-credit labs can share the same bounds.
+type CourseDetails struct {
+	InstructionalMethod string              `json:"instructionalMethod"`
+	PartOfTerm          string              `json:"partOfTerm"`
+	IsSectionLinked     bool                `gorm:"not null;default:false" json:"isSectionLinked"`
+	LinkIdentifier      string              `json:"linkIdentifier"`
+	CrossList           string              `json:"crossList"`
+	CreditsMin          *float32            `json:"creditsMin"`
+	CreditsMax          *float32            `json:"creditsMax"`
+	Prerequisites       *CourseRequirements `gorm:"serializer:json;type:jsonb" json:"prerequisites"`
+	Corequisites        *CourseRequirements `gorm:"serializer:json;type:jsonb" json:"corequisites"`
+	LinkedSections      *LinkedSections     `gorm:"serializer:json;type:jsonb" json:"linkedSections"`
+}
+
+// LinkedSections contains alternative registration combinations from Banner.
+// Every section in one option is required; options are alternatives, not cumulative.
+// Nil means unfetched/failed; an empty Options slice is an explicit no-links response.
+type LinkedSections struct {
+	Options []LinkedSectionOption `json:"options"`
+}
+
+type LinkedSectionOption struct {
+	Sections []LinkedSection `json:"sections"`
+}
+
+type LinkedSection struct {
+	CRN     string `json:"crn"`
+	Section string `json:"section"`
+	Type    string `json:"type"`
+	Title   string `json:"title"`
+}
+
+// CourseRequirements preserves Banner's requirement text and table expressions.
+// A nil pointer means the requirements have not been fetched successfully.
+type CourseRequirements struct {
+	Text   string             `json:"text"`
+	Tables []RequirementTable `json:"tables"`
+}
+
+type RequirementTable struct {
+	Headers []string   `json:"headers"`
+	Rows    [][]string `json:"rows"`
+}
+
 type CourseSeating struct {
-	Semester    int    `json:"semester"`
-	CRN         string `json:"crn"`
-	Seats       int    `json:"seats"`
-	MaxSeats    int    `json:"maxSeats"`
-	Waitlist    int    `json:"waitlist"`
-	MaxWaitlist int    `json:"maxWaitlist"`
+	Semester           int       `gorm:"primaryKey" json:"semester"`
+	CRN                string    `gorm:"primaryKey" json:"crn"`
+	CourseKey          string    `gorm:"not null;uniqueIndex" json:"-"`
+	Course             Course    `gorm:"constraint:OnDelete:CASCADE;" json:"-"`
+	Seats              int       `json:"seats"`
+	MaxSeats           int       `json:"maxSeats"`
+	Waitlist           int       `json:"waitlist"`
+	MaxWaitlist        int       `json:"maxWaitlist"`
+	SeatsAvailable     *int      `json:"seatsAvailable"`
+	WaitCount          *int      `json:"waitCount"`
+	OpenSection        *bool     `json:"openSection"`
+	CrossListCapacity  *int      `json:"crossListCapacity"`
+	CrossListCount     *int      `json:"crossListCount"`
+	CrossListAvailable *int      `json:"crossListAvailable"`
+	UpdatedAt          time.Time `json:"updatedAt"`
 }
 
 type CourseAPI struct {
+	CourseDetails
 	ID         string  `json:"id"`
 	Name       string  `json:"name"`
 	CRN        string  `json:"crn"`
@@ -47,9 +106,11 @@ type CourseAPI struct {
 	Campus     string  `json:"campus"`
 	SubjectId  string  `json:"subject"`
 	Instructor string  `json:"instructor"`
+	Type       string  `json:"type"`
 }
 
 type CourseFrontendAPI struct {
+	CourseDetails
 	ID          string   `json:"id"`
 	Name        string   `json:"name"`
 	CRN         string   `json:"crn"`
@@ -62,6 +123,7 @@ type CourseFrontendAPI struct {
 }
 
 type CourseTime struct {
+	MeetingDetails
 	ID        int    `gorm:"primaryKey;autoIncrement"`
 	StartTime string `gorm:"not null"`
 	EndTime   string `gorm:"not null"`
@@ -73,7 +135,14 @@ type CourseTime struct {
 	Course    Course `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
+type MeetingDetails struct {
+	StartDate    string `json:"startDate"`
+	EndDate      string `json:"endDate"`
+	BuildingName string `json:"buildingName"`
+}
+
 type CourseTimeAPI struct {
+	MeetingDetails
 	StartTime      string  `json:"startTime"`
 	EndTime        string  `json:"endTime"`
 	Days           *string `json:"days"`
@@ -100,6 +169,7 @@ type CourseTimeICal struct {
 }
 
 type CourseTimeFrontendAPI struct {
+	MeetingDetails
 	StartTime string  `json:"startTime"`
 	EndTime   string  `json:"endTime"`
 	Days      *string `json:"days"`
@@ -151,6 +221,23 @@ type FrontendAPIResponse struct {
 	Times      []CourseTimeFrontendAPI `json:"times"`
 	Seatings   []CourseSeating         `json:"seatings"`
 	Professors []ProfessorRatingAPI    `json:"profs"`
+}
+
+type ScheduleAPIResponse struct {
+	Courses []ScheduleCourseAPI     `json:"courses"`
+	Times   []CourseTimeFrontendAPI `json:"times"`
+}
+
+type ScheduleCourseAPI struct {
+	ID                  string  `json:"id"`
+	Name                string  `json:"name"`
+	CRN                 string  `json:"crn"`
+	Section             string  `json:"section"`
+	Credits             float32 `json:"credits"`
+	Campus              string  `json:"campus"`
+	SubjectID           string  `json:"subject"`
+	Type                string  `json:"type"`
+	InstructionalMethod string  `json:"instructionalMethod"`
 }
 
 type ExamTime struct {

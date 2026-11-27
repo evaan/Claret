@@ -18,16 +18,19 @@ import (
 // @Failure 500 {object} util.ErrorResponse
 // @Router /subjects [get]
 func SubjectsHandler(c *gin.Context, db *gorm.DB) {
+	db = db.WithContext(c.Request.Context())
 	subjects := make([]util.Subject, 0)
-
-	err := db.Raw(`SELECT DISTINCT s.*
-		FROM subjects s
-		JOIN courses c ON s.id = c.subject_id
-		WHERE (? = '' OR c.semester_id = ?)`, util.GetParamOrQuery(c, "semester")).Scan(&subjects).Error
+	query := db.Table("subjects s").Distinct("s.*").Joins("JOIN courses c ON s.id = c.subject_id")
+	if raw := util.GetParamOrQuery(c, "semester"); raw != "" {
+		semester, ok := semesterParam(c, db, raw, false)
+		if !ok {
+			return
+		}
+		query = query.Where("c.semester_id = ?", semester)
+	}
+	err := query.Scan(&subjects).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		internalError(c, err)
 		return
 	}
 

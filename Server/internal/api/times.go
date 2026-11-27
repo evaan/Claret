@@ -20,6 +20,7 @@ import (
 // @Failure 500 {object} util.ErrorResponse
 // @Router /times [get]
 func TimesHandler(c *gin.Context, db *gorm.DB) {
+	db = db.WithContext(c.Request.Context())
 	semester := util.GetParamOrQuery(c, "semester")
 	crn := util.GetParamOrQuery(c, "crn")
 	if crn == "" || semester == "" {
@@ -32,18 +33,17 @@ func TimesHandler(c *gin.Context, db *gorm.DB) {
 	times := make([]util.CourseTimeAPI, 0)
 	err := db.Raw(`SELECT
 		ct.start_time, ct.end_time, ct.days, ct.location, ct.date_range,
-		ct.type, ct.course_key, ct.course_crn, ct.semester_id,
+		ct.start_date, ct.end_date, ct.building_name, ct.type, c.crn AS course_crn,
 		STRING_AGG(DISTINCT ci.professor_name, ', ' ORDER BY ci.professor_name) AS professor_names
 		FROM course_times ct
+		JOIN courses c ON c.key = ct.course_key
 		LEFT JOIN course_instructors ci ON ct.course_key = ci.course_key
-		WHERE ct.semester_id = ? AND ct.course_crn = ?
+		WHERE c.semester_id = ? AND c.crn = ?
 		GROUP BY
 		ct.start_time, ct.end_time, ct.days, ct.location, ct.date_range,
-		ct.type, ct.course_key, ct.course_crn, ct.semester_id`, semester, crn).Scan(&times).Error
+		ct.start_date, ct.end_date, ct.building_name, ct.type, c.crn`, semester, crn).Scan(&times).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		internalError(c, err)
 		return
 	}
 

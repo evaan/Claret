@@ -3,24 +3,36 @@ definitions:
     properties:
       campus:
         type: string
-      comment:
-        type: string
+      corequisites:
+        $ref: '#/definitions/util.CourseRequirements'
       credits:
-        type: integer
+        type: number
+      creditsMax:
+        type: number
+      creditsMin:
+        type: number
       crn:
         type: string
-      dateRange:
+      crossList:
         type: string
       id:
         type: string
+      instructionalMethod:
+        type: string
       instructor:
         type: string
-      level:
+      isSectionLinked:
+        type: boolean
+      linkIdentifier:
         type: string
+      linkedSections:
+        $ref: '#/definitions/util.LinkedSections'
       name:
         type: string
-      registrationDates:
+      partOfTerm:
         type: string
+      prerequisites:
+        $ref: '#/definitions/util.CourseRequirements'
       section:
         type: string
       subject:
@@ -32,24 +44,38 @@ definitions:
     properties:
       campus:
         type: string
-      comment:
-        type: string
+      corequisites:
+        $ref: '#/definitions/util.CourseRequirements'
       credits:
-        type: integer
+        type: number
+      creditsMax:
+        type: number
+      creditsMin:
+        type: number
       crn:
         type: string
-      dateRange:
+      crossList:
         type: string
       id:
         type: string
-      instructor:
+      instructionalMethod:
         type: string
-      level:
+      instructors:
+        items:
+          type: string
+        type: array
+      isSectionLinked:
+        type: boolean
+      linkIdentifier:
         type: string
+      linkedSections:
+        $ref: '#/definitions/util.LinkedSections'
       name:
         type: string
-      registrationDates:
+      partOfTerm:
         type: string
+      prerequisites:
+        $ref: '#/definitions/util.CourseRequirements'
       section:
         type: string
       subject:
@@ -57,39 +83,63 @@ definitions:
       type:
         type: string
     type: object
+  util.CourseRequirements:
+    properties:
+      tables:
+        items:
+          $ref: '#/definitions/util.RequirementTable'
+        type: array
+      text:
+        type: string
+    type: object
   util.CourseSeating:
     properties:
       crn:
         type: string
+      crossListAvailable:
+        type: integer
+      crossListCapacity:
+        type: integer
+      crossListCount:
+        type: integer
+      maxSeats:
+        type: integer
+      maxWaitlist:
+        type: integer
+      openSection:
+        type: boolean
       seats:
-        $ref: '#/definitions/util.SeatingInfo'
+        type: integer
+      seatsAvailable:
+        type: integer
       semester:
+        type: integer
+      updatedAt:
         type: string
+      waitCount:
+        type: integer
       waitlist:
-        $ref: '#/definitions/util.SeatingInfo'
-    type: object
-  util.CourseSeatingResponse:
-    properties:
-      crn:
-        type: string
-      seats:
-        $ref: '#/definitions/util.SeatingInfo'
-      waitlist:
-        $ref: '#/definitions/util.SeatingInfo'
+        type: integer
     type: object
   util.CourseTimeAPI:
     properties:
+      buildingName:
+        type: string
       crn:
         type: string
       dateRange:
         type: string
       days:
         type: string
+      endDate:
+        type: string
       endTime:
         type: string
       location:
         type: string
       professorNames:
+        type: string
+      startDate:
         type: string
       startTime:
         type: string
@@ -98,15 +148,21 @@ definitions:
     type: object
   util.CourseTimeFrontendAPI:
     properties:
+      buildingName:
+        type: string
       crn:
         type: string
       dateRange:
         type: string
       days:
         type: string
+      endDate:
+        type: string
       endTime:
         type: string
       location:
+        type: string
+      startDate:
         type: string
       startTime:
         type: string
@@ -124,8 +180,6 @@ definitions:
         type: string
       location:
         type: string
-      semester:
-        type: integer
       time:
         type: string
     type: object
@@ -135,17 +189,13 @@ definitions:
         items:
           $ref: '#/definitions/util.CourseFrontendAPI'
         type: array
-      exams:
-        items:
-          $ref: '#/definitions/util.ExamTimeAPI'
-        type: array
       profs:
         items:
           $ref: '#/definitions/util.ProfessorRatingAPI'
         type: array
       seatings:
         items:
-          $ref: '#/definitions/util.CourseSeatingResponse'
+          $ref: '#/definitions/util.CourseSeating'
         type: array
       subjects:
         items:
@@ -154,6 +204,31 @@ definitions:
       times:
         items:
           $ref: '#/definitions/util.CourseTimeFrontendAPI'
+        type: array
+    type: object
+  util.LinkedSection:
+    properties:
+      crn:
+        type: string
+      section:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  util.LinkedSectionOption:
+    properties:
+      sections:
+        items:
+          $ref: '#/definitions/util.LinkedSection'
+        type: array
+    type: object
+  util.LinkedSections:
+    properties:
+      options:
+        items:
+          $ref: '#/definitions/util.LinkedSectionOption'
         type: array
     type: object
   util.ProfessorRatingAPI:
@@ -171,14 +246,50 @@ definitions:
       wouldRetake:
         type: number
     type: object
-  util.SeatingInfo:
+  util.RequirementTable:
     properties:
-      actual:
-        type: integer
-      capacity:
-        type: integer
-      remaining:
-        type: integer
+      headers:
+        items:
+          type: string
+        type: array
+      rows:
+        items:
+          items:
+            type: string
+          type: array
+        type: array
+    type: object
+  util.ScheduleAPIResponse:
+    properties:
+      courses:
+        items:
+          $ref: '#/definitions/util.ScheduleCourseAPI'
+        type: array
+      times:
+        items:
+          $ref: '#/definitions/util.CourseTimeFrontendAPI'
+        type: array
+    type: object
+  util.ScheduleCourseAPI:
+    properties:
+      campus:
+        type: string
+      credits:
+        type: number
+      crn:
+        type: string
+      id:
+        type: string
+      instructionalMethod:
+        type: string
+      name:
+        type: string
+      section:
+        type: string
+      subject:
+        type: string
+      type:
+        type: string
     type: object
   util.Semester:
     properties:
@@ -197,9 +308,9 @@ definitions:
     type: object
   util.Subject:
     properties:
-      id:
+      code:
         type: string
-      name:
+      description:
         type: string
     type: object
 info:
@@ -306,15 +417,14 @@ paths:
       summary: Get all exams
   /frontend:
     get:
-      consumes:
-      - application/json
-      description: Returns all data (courses, prof ratings, subjects, seats, times,
-        and exams) for a specified semester (or latest for no semester)
+      description: Returns courses, subjects, meetings, professor ratings, and timestamped
+        seat snapshots. Seat snapshots fall back to PostgreSQL when the live cache
+        is unavailable.
       parameters:
-      - description: Semester ID (i.e. 202401)
+      - description: Semester ID (defaults to the latest semester)
         in: query
         name: semester
-        type: string
+        type: integer
       produces:
       - application/json
       responses:
@@ -330,7 +440,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/util.ErrorResponse'
-      summary: Frontend
+      summary: Get schedule builder data
+      tags:
+      - Frontend
   /instructors:
     get:
       consumes:
@@ -393,22 +505,19 @@ paths:
           schema:
             $ref: '#/definitions/util.ErrorResponse'
       summary: Get Course Instructors
-  /seats:
+  /schedule:
     get:
-      consumes:
-      - application/json
-      description: Returns seats from a specified course, may take a few seconds if
-        seats not cached
+      description: Returns courses and meetings for the requested CRNs, without catalog
+        subjects, seat counts, or ratings. An empty CRN list returns empty arrays.
       parameters:
-      - description: Semester ID (i.e. 202401)
+      - description: Semester ID
         in: query
         name: semester
         required: true
-        type: string
-      - description: Course Registration Number (i.e. 40983)
+        type: integer
+      - description: Comma-separated CRNs (up to 100)
         in: query
-        name: crn
-        required: true
+        name: crns
         type: string
       produces:
       - application/json
@@ -416,7 +525,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/util.CourseSeating'
+            $ref: '#/definitions/util.ScheduleAPIResponse'
         "400":
           description: Bad Request
           schema:
@@ -425,7 +534,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/util.ErrorResponse'
-      summary: Get Course Seats
+      summary: Get schedule-only data
   /semester:
     get:
       consumes:

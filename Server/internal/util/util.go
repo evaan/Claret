@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"slices"
@@ -148,18 +147,11 @@ func GetParamOrQueryWithDefault(c *gin.Context, key string, fallback string) str
 }
 
 func SendErrorToWebhook(webhookUrl string, err error) {
-	params := fmt.Sprintf(`{"username":"Claret Scraper","embeds":[{"author":{"name":"Claret Scraper Error","url":"https://claretformun.com"},"timestamp":"%s","color":16711680,"fields":[{"name":"Error","value":"%s"}]}]}`, time.Now().Format(time.RFC3339), err.Error())
-	r, err := http.NewRequest("POST", os.Getenv("SCRAPER_WEBHOOK_URL"), bytes.NewBuffer([]byte(params)))
-	if err != nil {
-		panic(err)
+	if sendErr := SendWebhook(webhookUrl, map[string]string{
+		"username": "Claret Scraper", "content": err.Error(),
+	}); sendErr != nil {
+		log.Printf("Unable to send scraper error: %v", sendErr)
 	}
-	r.Header.Add("Content-Type", "application/json")
-	client := &http.Client{}
-	res, err := client.Do(r)
-	if err != nil {
-		panic(err)
-	}
-	defer res.Body.Close()
 }
 
 var runeToWeekday = map[rune]time.Weekday{
@@ -211,7 +203,7 @@ func LatestClassDate(start time.Time, compact string) time.Time {
 			continue
 		}
 
-		offset := (int(targetDay) - int(start.Weekday()) + 7) % 7
+		offset := (int(start.Weekday()) - int(targetDay) + 7) % 7
 		match := start.AddDate(0, 0, -offset)
 
 		if latest.IsZero() || match.After(latest) {

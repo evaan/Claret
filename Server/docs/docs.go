@@ -165,18 +165,18 @@ const docTemplate = `{
         },
         "/frontend": {
             "get": {
-                "description": "Returns all data (courses, prof ratings, subjects, seats, times, and exams) for a specified semester (or latest for no semester)",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Returns courses, subjects, meetings, professor ratings, and timestamped seat snapshots. Seat snapshots fall back to PostgreSQL when the live cache is unavailable.",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Frontend",
+                "tags": [
+                    "Frontend"
+                ],
+                "summary": "Get schedule builder data",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Semester ID (i.e. 202401)",
+                        "type": "integer",
+                        "description": "Semester ID (defaults to the latest semester)",
                         "name": "semester",
                         "in": "query"
                     }
@@ -297,37 +297,33 @@ const docTemplate = `{
                 }
             }
         },
-        "/seats": {
+        "/schedule": {
             "get": {
-                "description": "Returns seats from a specified course, may take a few seconds if seats not cached",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Returns courses and meetings for the requested CRNs, without catalog subjects, seat counts, or ratings. An empty CRN list returns empty arrays.",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Get Course Seats",
+                "summary": "Get schedule-only data",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Semester ID (i.e. 202401)",
+                        "type": "integer",
+                        "description": "Semester ID",
                         "name": "semester",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "Course Registration Number (i.e. 40983)",
-                        "name": "crn",
-                        "in": "query",
-                        "required": true
+                        "description": "Comma-separated CRNs (up to 100)",
+                        "name": "crns",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/util.CourseSeating"
+                            "$ref": "#/definitions/util.ScheduleAPIResponse"
                         }
                     },
                     "400": {
@@ -478,32 +474,50 @@ const docTemplate = `{
                 "campus": {
                     "type": "string"
                 },
-                "comment": {
-                    "type": "string"
+                "corequisites": {
+                    "$ref": "#/definitions/util.CourseRequirements"
                 },
                 "credits": {
-                    "type": "integer"
+                    "type": "number"
+                },
+                "creditsMax": {
+                    "type": "number"
+                },
+                "creditsMin": {
+                    "type": "number"
                 },
                 "crn": {
                     "type": "string"
                 },
-                "dateRange": {
+                "crossList": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
+                "instructionalMethod": {
+                    "type": "string"
+                },
                 "instructor": {
                     "type": "string"
                 },
-                "level": {
+                "isSectionLinked": {
+                    "type": "boolean"
+                },
+                "linkIdentifier": {
                     "type": "string"
+                },
+                "linkedSections": {
+                    "$ref": "#/definitions/util.LinkedSections"
                 },
                 "name": {
                     "type": "string"
                 },
-                "registrationDates": {
+                "partOfTerm": {
                     "type": "string"
+                },
+                "prerequisites": {
+                    "$ref": "#/definitions/util.CourseRequirements"
                 },
                 "section": {
                     "type": "string"
@@ -522,32 +536,53 @@ const docTemplate = `{
                 "campus": {
                     "type": "string"
                 },
-                "comment": {
-                    "type": "string"
+                "corequisites": {
+                    "$ref": "#/definitions/util.CourseRequirements"
                 },
                 "credits": {
-                    "type": "integer"
+                    "type": "number"
+                },
+                "creditsMax": {
+                    "type": "number"
+                },
+                "creditsMin": {
+                    "type": "number"
                 },
                 "crn": {
                     "type": "string"
                 },
-                "dateRange": {
+                "crossList": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-                "instructor": {
+                "instructionalMethod": {
                     "type": "string"
                 },
-                "level": {
+                "instructors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "isSectionLinked": {
+                    "type": "boolean"
+                },
+                "linkIdentifier": {
                     "type": "string"
+                },
+                "linkedSections": {
+                    "$ref": "#/definitions/util.LinkedSections"
                 },
                 "name": {
                     "type": "string"
                 },
-                "registrationDates": {
+                "partOfTerm": {
                     "type": "string"
+                },
+                "prerequisites": {
+                    "$ref": "#/definitions/util.CourseRequirements"
                 },
                 "section": {
                     "type": "string"
@@ -560,40 +595,70 @@ const docTemplate = `{
                 }
             }
         },
+        "util.CourseRequirements": {
+            "type": "object",
+            "properties": {
+                "tables": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.RequirementTable"
+                    }
+                },
+                "text": {
+                    "type": "string"
+                }
+            }
+        },
         "util.CourseSeating": {
             "type": "object",
             "properties": {
                 "crn": {
                     "type": "string"
                 },
+                "crossListAvailable": {
+                    "type": "integer"
+                },
+                "crossListCapacity": {
+                    "type": "integer"
+                },
+                "crossListCount": {
+                    "type": "integer"
+                },
+                "maxSeats": {
+                    "type": "integer"
+                },
+                "maxWaitlist": {
+                    "type": "integer"
+                },
+                "openSection": {
+                    "type": "boolean"
+                },
                 "seats": {
-                    "$ref": "#/definitions/util.SeatingInfo"
+                    "type": "integer"
+                },
+                "seatsAvailable": {
+                    "type": "integer"
                 },
                 "semester": {
+                    "type": "integer"
+                },
+                "updatedAt": {
                     "type": "string"
                 },
-                "waitlist": {
-                    "$ref": "#/definitions/util.SeatingInfo"
-                }
-            }
-        },
-        "util.CourseSeatingResponse": {
-            "type": "object",
-            "properties": {
-                "crn": {
-                    "type": "string"
-                },
-                "seats": {
-                    "$ref": "#/definitions/util.SeatingInfo"
+                "waitCount": {
+                    "type": "integer"
                 },
                 "waitlist": {
-                    "$ref": "#/definitions/util.SeatingInfo"
+                    "type": "integer"
                 }
             }
         },
         "util.CourseTimeAPI": {
             "type": "object",
             "properties": {
+                "buildingName": {
+                    "type": "string"
+                },
                 "crn": {
                     "type": "string"
                 },
@@ -603,6 +668,9 @@ const docTemplate = `{
                 "days": {
                     "type": "string"
                 },
+                "endDate": {
+                    "type": "string"
+                },
                 "endTime": {
                     "type": "string"
                 },
@@ -610,6 +678,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "professorNames": {
+                    "type": "string"
+                },
+                "startDate": {
                     "type": "string"
                 },
                 "startTime": {
@@ -623,6 +694,9 @@ const docTemplate = `{
         "util.CourseTimeFrontendAPI": {
             "type": "object",
             "properties": {
+                "buildingName": {
+                    "type": "string"
+                },
                 "crn": {
                     "type": "string"
                 },
@@ -632,10 +706,16 @@ const docTemplate = `{
                 "days": {
                     "type": "string"
                 },
+                "endDate": {
+                    "type": "string"
+                },
                 "endTime": {
                     "type": "string"
                 },
                 "location": {
+                    "type": "string"
+                },
+                "startDate": {
                     "type": "string"
                 },
                 "startTime": {
@@ -663,9 +743,6 @@ const docTemplate = `{
                 "location": {
                     "type": "string"
                 },
-                "semester": {
-                    "type": "integer"
-                },
                 "time": {
                     "type": "string"
                 }
@@ -680,12 +757,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/util.CourseFrontendAPI"
                     }
                 },
-                "exams": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/util.ExamTimeAPI"
-                    }
-                },
                 "profs": {
                     "type": "array",
                     "items": {
@@ -695,7 +766,7 @@ const docTemplate = `{
                 "seatings": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/util.CourseSeatingResponse"
+                        "$ref": "#/definitions/util.CourseSeating"
                     }
                 },
                 "subjects": {
@@ -708,6 +779,45 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/util.CourseTimeFrontendAPI"
+                    }
+                }
+            }
+        },
+        "util.LinkedSection": {
+            "type": "object",
+            "properties": {
+                "crn": {
+                    "type": "string"
+                },
+                "section": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "util.LinkedSectionOption": {
+            "type": "object",
+            "properties": {
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.LinkedSection"
+                    }
+                }
+            }
+        },
+        "util.LinkedSections": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.LinkedSectionOption"
                     }
                 }
             }
@@ -735,17 +845,72 @@ const docTemplate = `{
                 }
             }
         },
-        "util.SeatingInfo": {
+        "util.RequirementTable": {
             "type": "object",
             "properties": {
-                "actual": {
-                    "type": "integer"
+                "headers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
-                "capacity": {
-                    "type": "integer"
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "util.ScheduleAPIResponse": {
+            "type": "object",
+            "properties": {
+                "courses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.ScheduleCourseAPI"
+                    }
                 },
-                "remaining": {
-                    "type": "integer"
+                "times": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/util.CourseTimeFrontendAPI"
+                    }
+                }
+            }
+        },
+        "util.ScheduleCourseAPI": {
+            "type": "object",
+            "properties": {
+                "campus": {
+                    "type": "string"
+                },
+                "credits": {
+                    "type": "number"
+                },
+                "crn": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "instructionalMethod": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "section": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
@@ -775,10 +940,10 @@ const docTemplate = `{
         "util.Subject": {
             "type": "object",
             "properties": {
-                "id": {
+                "code": {
                     "type": "string"
                 },
-                "name": {
+                "description": {
                     "type": "string"
                 }
             }

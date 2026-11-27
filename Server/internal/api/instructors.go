@@ -20,6 +20,7 @@ import (
 // @Failure 500 {object} util.ErrorResponse
 // @Router /instructors [get]
 func InstructorsHandler(c *gin.Context, db *gorm.DB) {
+	db = db.WithContext(c.Request.Context())
 	semester := util.GetParamOrQuery(c, "semester")
 	crn := util.GetParamOrQuery(c, "crn")
 	if crn == "" || semester == "" {
@@ -30,11 +31,9 @@ func InstructorsHandler(c *gin.Context, db *gorm.DB) {
 	}
 
 	ratings := make([]util.ProfessorRatingAPI, 0)
-	err := db.Raw("SELECT ci.professor_name, pr.rating, pr.difficulty, pr.would_retake, pr.rating_count FROM course_instructors ci LEFT JOIN professor_ratings pr ON ci.professor_name = pr.professor_name WHERE ci.course_key = ?", semester+crn).Scan(&ratings).Error
+	err := db.Raw("SELECT ci.professor_name, pr.id, pr.rating, pr.difficulty, pr.would_retake, pr.rating_count FROM course_instructors ci LEFT JOIN professor_ratings pr ON ci.professor_name = pr.professor_name WHERE ci.course_key = ?", semester+crn).Scan(&ratings).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		internalError(c, err)
 		return
 	}
 

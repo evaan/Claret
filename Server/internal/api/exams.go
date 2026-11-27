@@ -19,6 +19,7 @@ import (
 // @Failure 500 {object} util.ErrorResponse
 // @Router /exams [get]
 func ExamsHander(c *gin.Context, db *gorm.DB) {
+	db = db.WithContext(c.Request.Context())
 	semester := util.GetParamOrQuery(c, "semester")
 	if semester == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -32,9 +33,7 @@ func ExamsHander(c *gin.Context, db *gorm.DB) {
 		FROM exam_times et JOIN courses c ON et.course_key = c.key
 		WHERE c.semester_id = ?`, semester).Scan(&exams).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		internalError(c, err)
 		return
 	}
 

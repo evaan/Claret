@@ -3,16 +3,18 @@ package scrapers
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evaan/Claret/internal/util"
 )
 
+var upstreamClient = &http.Client{Timeout: 30 * time.Second}
+
 func GetJsession() (string, error) {
-	resp, err := http.Get("https://self-service.mun.ca/StudentRegistrationSsb")
+	resp, err := upstreamClient.Get("https://self-service.mun.ca/StudentRegistrationSsb")
 	if err != nil {
 		return "", err
 	}
@@ -58,7 +60,7 @@ func SendSearch(client *http.Client, semester util.Semester) error {
 		return errors.New("Recieved status code " + strconv.Itoa(resp.StatusCode) + " when sending search request")
 	}
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := util.ReadBody(resp.Body)
 	if err != nil {
 		return err
 	}

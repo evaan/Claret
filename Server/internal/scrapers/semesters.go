@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"html"
-	"io"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -13,7 +11,7 @@ import (
 )
 
 func GetSemesters() ([]util.Semester, error) {
-	resp, err := http.Get("https://self-service.mun.ca/StudentRegistrationSsb/ssb/classSearch/getTerms?searchTerm=&offset=1&max=0")
+	resp, err := upstreamClient.Get("https://self-service.mun.ca/StudentRegistrationSsb/ssb/classSearch/getTerms?searchTerm=&offset=1&max=0")
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +21,7 @@ func GetSemesters() ([]util.Semester, error) {
 		return nil, errors.New("Recieved status code " + strconv.Itoa(resp.StatusCode) + " when requesting semesters")
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := util.ReadBody(resp.Body)
 	if err != nil {
 		return nil, err
 	}

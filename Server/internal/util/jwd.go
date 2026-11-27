@@ -1,111 +1,62 @@
 package util
 
 import (
-	"regexp"
+	"html"
 	"strings"
+	"unicode"
+
+	"golang.org/x/text/unicode/norm"
 )
 
-func jaroSim(str1, str2 string) float64 {
-	if len(str1) == 0 && len(str2) == 0 {
-		return 1
-	}
-	if len(str1) == 0 || len(str2) == 0 {
-		return 0
-	}
-	match_distance := len(str1)
-	if len(str2) > match_distance {
-		match_distance = len(str2)
-	}
-	match_distance = match_distance/2 - 1
-	str1_matches := make([]bool, len(str1))
-	str2_matches := make([]bool, len(str2))
-	matches := 0.
-	transpositions := 0.
-	for i := range str1 {
-		start := i - match_distance
-		if start < 0 {
-			start = 0
-		}
-		end := i + match_distance + 1
-		if end > len(str2) {
-			end = len(str2)
-		}
-		for k := start; k < end; k++ {
-			if str2_matches[k] {
-				continue
-			}
-			if str1[i] != str2[k] {
-				continue
-			}
-			str1_matches[i] = true
-			str2_matches[k] = true
-			matches++
-			break
-		}
-	}
-	if matches == 0 {
-		return 0
-	}
-	k := 0
-	for i := range str1 {
-		if !str1_matches[i] {
-			continue
-		}
-		for !str2_matches[k] {
-			k++
-		}
-		if str1[i] != str2[k] {
-			transpositions++
-		}
-		k++
-	}
-	transpositions /= 2
-	return (matches/float64(len(str1)) +
-		matches/float64(len(str2)) +
-		(matches-transpositions)/matches) / 3
-}
-
 func normalizeWords(name string) []string {
-	name = strings.TrimSpace(name)
-	if strings.Contains(name, ",") {
-		parts := strings.SplitN(name, ",", 2)
-		name = strings.TrimSpace(parts[1]) + " " + strings.TrimSpace(parts[0])
+	name = html.UnescapeString(strings.TrimSpace(name))
+	if before, after, ok := strings.Cut(name, ","); ok {
+		name = after + " " + before
 	}
-	name = strings.ToLower(name)
-	re := regexp.MustCompile(`[^\w\s]`)
-	name = re.ReplaceAllString(name, "")
+	name = strings.Map(func(r rune) rune {
+		switch {
+		case unicode.Is(unicode.Mn, r), r == '\'', r == '’', r == '-', r == '‐', r == '‑':
+			return -1
+		case unicode.IsLetter(r):
+			return unicode.ToLower(r)
+		default:
+			return ' '
+		}
+	}, norm.NFD.String(name))
 	words := strings.Fields(name)
+	for len(words) > 0 && (words[0] == "dr" || words[0] == "prof" || words[0] == "professor") {
+		words = words[1:]
+	}
 	return words
 }
 
-func mixedNameDistance(s, t string) float64 {
-	wordsS := normalizeWords(s)
-	wordsT := normalizeWords(t)
-
-	maxSim := 0.0
-	used := make([]bool, len(wordsT))
-
-	for _, ws := range wordsS {
-		best := 0.0
-		bestIndex := -1
-		for i, wt := range wordsT {
-			if used[i] {
-				continue
-			}
-			sim := jaroSim(ws, wt)
-			if sim > best {
-				best = sim
-				bestIndex = i
-			}
-		}
-		if bestIndex >= 0 {
-			used[bestIndex] = true
-			maxSim += best
+// nameSimilarity requires the same surname and compatible given names. Middle
+// names can be omitted or abbreviated, but conflicting initials are not ignored.
+func nameSimilarity(left, right string) float64 {
+	a, b := normalizeWords(left), normalizeWords(right)
+	if len(a) < 2 || len(b) < 2 || a[len(a)-1] != b[len(b)-1] {
+		return 0
+	}
+	score := 0.97
+	switch {
+	case a[0] == b[0]:
+	case (len(a[0]) == 1 || len(b[0]) == 1) && a[0][0] == b[0][0]:
+		score = 0.91
+	case len(a[0]) >= 3 && len(b[0]) >= 3 && (strings.HasPrefix(a[0], b[0]) || strings.HasPrefix(b[0], a[0])):
+		score = 0.94
+	default:
+		return 0
+	}
+	am, bm := a[1:len(a)-1], b[1:len(b)-1]
+	for i := 0; i < len(am) && i < len(bm); i++ {
+		if am[i] != bm[i] && !(strings.HasPrefix(am[i], bm[i]) || strings.HasPrefix(bm[i], am[i])) {
+			return 0
 		}
 	}
-
-	avgSim := maxSim / float64(len(wordsS))
-	return 1.0 - avgSim
+	if strings.Join(a, " ") == strings.Join(b, " ") {
+		return 1
+	}
+	return score
 }
 
 type NameAndDistance struct {
@@ -113,16 +64,25 @@ type NameAndDistance struct {
 	Distance float64
 }
 
+// ClosestName leaves ambiguous matches unassigned rather than linking a rating
+// to the wrong instructor. Name preserves the caller's original spelling.
 func ClosestName(names []string, name string) NameAndDistance {
-	closest := &NameAndDistance{Name: "", Distance: 0}
-
-	for _, prof := range names {
-		dist := 1.0 - mixedNameDistance(prof, name)
-		if dist > closest.Distance && dist > 0.9 {
-			closest.Name = prof
-			closest.Distance = dist
+	best := NameAndDistance{}
+	ambiguous := false
+	for _, candidate := range names {
+		score := nameSimilarity(candidate, name)
+		if score == 0 {
+			continue
+		}
+		if score > best.Distance {
+			best = NameAndDistance{Name: candidate, Distance: score}
+			ambiguous = false
+		} else if score == best.Distance {
+			ambiguous = true
 		}
 	}
-
-	return *closest
+	if ambiguous {
+		best.Name = ""
+	}
+	return best
 }

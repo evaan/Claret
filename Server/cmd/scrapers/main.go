@@ -1,7 +1,6 @@
 package scrapers
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,10 +8,8 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"os"
-	"slices"
 	"strconv"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/evaan/Claret/internal/scrapers"
@@ -20,6 +17,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
@@ -30,11 +28,12 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 
 	jsession, err := scrapers.GetJsession()
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Unable to start catalog scrape: %v", err)
+		return
 	}
 
 	jar, _ := cookiejar.New(nil)
-	client := &http.Client{Jar: jar}
+	client := &http.Client{Jar: jar, Timeout: 30 * time.Second}
 	baseUrl, _ := url.Parse("https://self-service.mun.ca")
 	jar.SetCookies(baseUrl, []*http.Cookie{
 		{Name: "JSESSIONID", Value: jsession, Path: "/StudentRegistrationSsb"},
@@ -47,70 +46,40 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 
 	logger.Println("⭐ Scraping Started!")
 
-	var profs []string
-
 	semesters, err := scrapers.GetSemesters()
 	if err != nil {
-		logger.Fatal(err)
+		logger.Printf("Unable to fetch semesters: %v", err)
+		return
 	}
 
 	for _, semester := range semesters {
 		if semester.ViewOnly && !scrapeAll {
 			continue
 		}
-		if db.Where("id = ?", semester.ID).Find(&util.Semester{}).RowsAffected > 0 {
-			if semester.ViewOnly {
-				continue
-			}
-			db.Delete(&semester)
-		}
-		logger.Println("📝 Processing Semester: " + semester.Name + " (" + strconv.Itoa(semester.ID) + ")")
-		db.Create(&semester)
-		subjects, err := scrapers.GetSubjects(semester)
+		count, err := scrapeSemester(db, client, semester)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Printf("Keeping last good catalog for %d: %v", semester.ID, err)
+			continue
 		}
-		for _, subject := range subjects {
-			db.Save(&subject)
+		coursesScraped += count
+		cacheCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		if err := rdb.Del(cacheCtx, "frontend:v2:"+strconv.Itoa(semester.ID)).Err(); err != nil {
+			logger.Printf("Unable to invalidate catalog cache for %d: %v", semester.ID, err)
 		}
-		courses, _, err := scrapers.GetCourses(client, semester)
-		if err != nil {
-			logger.Fatal(err)
-		}
-		for _, course := range courses {
-			db.Create(&course)
-			coursesScraped++
-			meetingTimes, instructors, err := scrapers.GetMeetingTimes(semester, course.CRN)
-			if err != nil {
-				logger.Println(err)
-				continue
-			}
-			for _, meetingTime := range meetingTimes {
-				db.Create(&meetingTime)
-			}
-			for _, instructor := range instructors {
-				if !slices.Contains(profs, instructor) {
-					profs = append(profs, instructor)
-				}
-				db.Save(&util.Professor{Name: instructor})
-				db.Save(&util.CourseInstructor{
-					ProfessorName: instructor,
-					CourseKey:     course.Key,
-				})
-			}
-		}
-		// logger.Println(" 📝 Processing Exams")
-		// for _, exam := range scrapers.GetExams(semester.ID) {
-		// 	db.Save(&exam)
-		// }
-		rdb.Del(ctx, "frontend:"+strconv.Itoa(semester.ID))
+		cancel()
 	}
 
 	logger.Println("⭐ RMP Scraping Started!")
 
+	var profs []string
+	if err := db.Model(&util.Professor{}).Pluck("name", &profs).Error; err != nil {
+		logger.Printf("Unable to load instructor names for RMP: %v", err)
+	}
 	profRatings := scrapers.RMP(logger, profs)
 	for _, rating := range profRatings {
-		db.Save(&rating)
+		if err := db.Omit("Professor").Save(&rating).Error; err != nil {
+			logger.Printf("Unable to save RMP rating for %q: %v", rating.ProfessorName, err)
+		}
 	}
 
 	scrapingTime := time.Since(startTime)
@@ -120,22 +89,48 @@ func Scrape(db *gorm.DB, webhookUrl string, scrapeAll bool, rdb *redis.Client) {
 
 	if webhookUrl != "" {
 		logger.Println("🔔 Sending message to Discord")
-		params := fmt.Sprintf(`{"username":"Claret Scraper","embeds":[{"author":{"name":"Claret Scraper Report","url":"https://claretformun.com"},"timestamp":"%s","color":65280,"fields":[{"name":"Scraping Time","value":"%s"},{"name":"Courses Scraped","value":"%d"}]}]}`, time.Now().Format(time.RFC3339), fmt.Sprintf("%02d:%02d", int(scrapingTime.Minutes()), int(scrapingTime.Seconds())%60), coursesScraped)
-		r, err := http.NewRequest("POST", os.Getenv("SCRAPER_WEBHOOK_URL"), bytes.NewBuffer([]byte(params)))
-		if err != nil {
-			panic(err)
+		if err := util.SendWebhook(webhookUrl, map[string]string{
+			"username": "Claret Scraper",
+			"content":  fmt.Sprintf("Scrape completed in %s; %d courses updated.", scrapingTime.Round(time.Second), coursesScraped),
+		}); err != nil {
+			logger.Printf("Unable to send scraper report: %v", err)
 		}
-		r.Header.Add("Content-Type", "application/json")
-		client := &http.Client{}
-		res, err := client.Do(r)
-		if err != nil {
-			panic(err)
-		}
-		defer res.Body.Close()
 	}
 }
 
-func ScrapeSeats(rdb *redis.Client) {
+// Only persist snapshots whose course already exists; retain newer snapshots.
+func saveSeatSnapshots(db *gorm.DB, semester int, seatings []util.CourseSeating) error {
+	var keys []string
+	if err := db.Model(&util.Course{}).Where("semester_id = ?", semester).Pluck("key", &keys).Error; err != nil {
+		return err
+	}
+	known := make(map[string]bool, len(keys))
+	for _, key := range keys {
+		known[key] = true
+	}
+	snapshots := make([]util.CourseSeating, 0, len(seatings))
+	for _, seating := range seatings {
+		if known[seating.CourseKey] {
+			snapshots = append(snapshots, seating)
+		}
+	}
+	if len(snapshots) == 0 {
+		return nil
+	}
+	return db.Omit("Course").Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "semester"}, {Name: "crn"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"course_key", "seats", "max_seats", "waitlist", "max_waitlist", "seats_available",
+			"wait_count", "open_section", "cross_list_capacity", "cross_list_count", "cross_list_available", "updated_at",
+		}),
+		// A full scrape may finish after a newer, ten-minute seat refresh.
+		Where: clause.Where{Exprs: []clause.Expression{
+			clause.Expr{SQL: "EXCLUDED.updated_at >= course_seatings.updated_at"},
+		}},
+	}).CreateInBatches(&snapshots, 500).Error
+}
+
+func ScrapeSeats(db *gorm.DB, rdb *redis.Client) {
 	hour := time.Now().Hour()
 	if hour == 3 || hour == 4 {
 		return
@@ -150,10 +145,11 @@ func ScrapeSeats(rdb *redis.Client) {
 	jsession, err := scrapers.GetJsession()
 	if err != nil {
 		logger.Println(err)
+		return
 	}
 
 	jar, _ := cookiejar.New(nil)
-	client := &http.Client{Jar: jar}
+	client := &http.Client{Jar: jar, Timeout: 30 * time.Second}
 	baseUrl, _ := url.Parse("https://self-service.mun.ca")
 	jar.SetCookies(baseUrl, []*http.Cookie{
 		{Name: "JSESSIONID", Value: jsession, Path: "/StudentRegistrationSsb"},
@@ -161,24 +157,40 @@ func ScrapeSeats(rdb *redis.Client) {
 
 	semesters, err := scrapers.GetSemesters()
 	if err != nil {
-		logger.Fatal(err)
+		logger.Printf("Unable to fetch semesters for seat refresh: %v", err)
+		return
 	}
 
 	for _, semester := range semesters {
-		if !strings.Contains(semester.Name, "(View Only)") {
+		if !semester.ViewOnly {
 			_, seatings, err := scrapers.GetCourses(client, semester)
 			if err != nil {
-				logger.Println(seatings)
+				logger.Println(err)
+				continue
 			}
-			for _, seating := range seatings {
-				seatingJson, err := json.Marshal(seating)
-				if err != nil {
-					logger.Println(err)
+			dbCtx, dbCancel := context.WithTimeout(ctx, 30*time.Second)
+			err = saveSeatSnapshots(db.WithContext(dbCtx), semester.ID, seatings)
+			dbCancel()
+			if err != nil {
+				logger.Println("Unable to persist seat snapshots: ", err)
+				continue
+			}
+			// Pipeline cache writes so a large catalog doesn't require one
+			// Redis round trip per course.
+			cacheCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			_, err = rdb.Pipelined(cacheCtx, func(pipe redis.Pipeliner) error {
+				for _, seating := range seatings {
+					seatingJson, err := json.Marshal(seating)
+					if err != nil {
+						return err
+					}
+					pipe.Set(cacheCtx, "seats:"+strconv.Itoa(seating.Semester)+":"+seating.CRN, seatingJson, 10*time.Minute)
 				}
-				err = rdb.Set(ctx, "seats:"+strconv.Itoa(seating.Semester)+":"+seating.CRN, seatingJson, 10*time.Minute).Err()
-				if err != nil {
-					logger.Println(err)
-				}
+				return nil
+			})
+			cancel()
+			if err != nil {
+				logger.Printf("Unable to cache seats: %v", err)
 			}
 		}
 	}
@@ -188,12 +200,38 @@ func ScrapeSeats(rdb *redis.Client) {
 }
 
 func Entrypoint(db *gorm.DB, webhookURL string, scrapeAll bool, rdb *redis.Client) {
+	// Share a lock across startup and both cron jobs; never pile up scrapes.
+	var running sync.Mutex
+	guard := func(job func(), wait bool) func() {
+		return func() {
+			if wait {
+				// Don't lose a weekly catalog run when seats start at :30 too.
+				running.Lock()
+			} else if !running.TryLock() {
+				log.Println("Skipping scraper job: another scrape is still running")
+				return
+			}
+			defer running.Unlock()
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					log.Printf("Scraper job failed: %v", recovered)
+				}
+			}()
+			job()
+		}
+	}
+	full := guard(func() { Scrape(db, webhookURL, scrapeAll, rdb) }, true)
+	seats := guard(func() { ScrapeSeats(db, rdb) }, false)
 	c := cron.New()
-
-	go Scrape(db, webhookURL, scrapeAll, rdb)
-	go ScrapeSeats(rdb)
-
-	c.AddFunc("*/10 * * * *", func() { ScrapeSeats(rdb) })
-	c.AddFunc("30 4 * * 1", func() { Scrape(db, webhookURL, scrapeAll, rdb) })
+	if _, err := c.AddFunc("*/10 * * * *", seats); err != nil {
+		log.Printf("Unable to schedule seats: %v", err)
+		return
+	}
+	// Banner maintenance blocks 03:00–04:59; the old 04:30 job always skipped.
+	if _, err := c.AddFunc("30 5 * * 1", full); err != nil {
+		log.Printf("Unable to schedule catalog: %v", err)
+		return
+	}
 	c.Start()
+	go full()
 }

@@ -18,13 +18,12 @@ import (
 // @Failure 500 {object} util.ErrorResponse
 // @Router /semester [get]
 func SemestersHandler(c *gin.Context, db *gorm.DB) {
+	db = db.WithContext(c.Request.Context())
 	semesters := make([]util.Semester, 0)
 
 	err := db.Raw("SELECT * FROM semesters WHERE (? = 'false' OR latest = true) AND (? = 'false' OR mi = true) AND (? = 'false' OR medicine = true)", util.GetParamOrQueryWithDefault(c, "latest", "false"), util.GetParamOrQueryWithDefault(c, "mi", "false"), util.GetParamOrQueryWithDefault(c, "medicine", "false")).Scan(&semesters).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		internalError(c, err)
 		return
 	}
 

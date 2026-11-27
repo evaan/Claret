@@ -2,22 +2,24 @@ package scrapers
 
 import (
 	"encoding/json"
+	"fmt"
 	"html"
-	"io"
-	"net/http"
 	"strconv"
 
 	"github.com/evaan/Claret/internal/util"
 )
 
 func GetSubjects(semester util.Semester) ([]util.Subject, error) {
-	resp, err := http.Get("https://self-service.mun.ca/StudentRegistrationSsb/ssb/classSearch/get_subject?searchTerm=&term=" + strconv.Itoa(semester.ID) + "&offset=1&max=500")
+	resp, err := upstreamClient.Get("https://self-service.mun.ca/StudentRegistrationSsb/ssb/classSearch/get_subject?searchTerm=&term=" + strconv.Itoa(semester.ID) + "&offset=1&max=500")
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("subjects returned status %d", resp.StatusCode)
+	}
+	body, err := util.ReadBody(resp.Body)
 	if err != nil {
 		return nil, err
 	}

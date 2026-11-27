@@ -1,7 +1,13 @@
 package api
 
 import (
+	"context"
+	"fmt"
+	"net"
 	"net/http"
+	"os"
+	"strings"
+	"time"
 
 	_ "github.com/evaan/Claret/docs"
 	"github.com/evaan/Claret/internal/api"
@@ -18,37 +24,31 @@ import (
 // @description The API for Claret, a tool for Memorial University students.
 // @host api.claretformun.com
 // @BasePath /
-func StartAPI(db *gorm.DB, rdb *redis.Client, enableLimit bool, limit string) {
+func StartAPI(db *gorm.DB, rdb *redis.Client, enableLimit bool, limit string) error {
 	r := gin.Default()
-
-	// TODO: maybe analytics for active users? redis?
+	r.Use(api.RequestTimeoutMiddleware(10 * time.Second))
 
 	if enableLimit {
-		r.Use(api.RateLimiterMiddleware(limit))
+		middleware, err := api.RateLimiterMiddleware(limit)
+		if err != nil {
+			return err
+		}
+		r.Use(middleware)
 	}
 
 	r.Use(cors.Default())
 
-	r.SetTrustedProxies([]string{
-		"127.0.0.1",
-
-		// cloudflare ipv4
-		"173.245.48.0/20",
-		"103.21.244.0/22",
-		"103.22.200.0/22",
-		"103.31.4.0/22",
-		"141.101.64.0/18",
-		"108.162.192.0/18",
-		"190.93.240.0/20",
-		"188.114.96.0/20",
-		"197.234.240.0/22",
-		"198.41.128.0/17",
-		"162.158.0.0/15",
-		"104.16.0.0/13",
-		"104.24.0.0/14",
-		"172.64.0.0/13",
-		"131.0.72.0/22",
-	})
+	// Trust only the actual ingress hops, never arbitrary Docker/private ranges.
+	var proxies []string
+	for _, proxy := range strings.Split(os.Getenv("API_TRUSTED_PROXIES"), ",") {
+		if proxy = strings.TrimSpace(proxy); proxy != "" {
+			proxies = append(proxies, proxy)
+		}
+	}
+	if err := r.SetTrustedProxies(proxies); err != nil {
+		return fmt.Errorf("invalid API_TRUSTED_PROXIES: %w", err)
+	}
+	r.RemoteIPHeaders = []string{"X-Forwarded-For"}
 
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/swagger/index.html")
@@ -56,6 +56,13 @@ func StartAPI(db *gorm.DB, rdb *redis.Client, enableLimit bool, limit string) {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.GET("/health", func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+		sqlDB, err := db.DB()
+		if err != nil || sqlDB.PingContext(ctx) != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"alive": false})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{
 			"alive": true,
 		})
@@ -125,9 +132,26 @@ func StartAPI(db *gorm.DB, rdb *redis.Client, enableLimit bool, limit string) {
 		api.FrontendHandler(c, db, rdb)
 	})
 
+	r.GET("/schedule", func(c *gin.Context) {
+		api.ScheduleHandler(c, db)
+	})
+
 	r.GET("/claret.ics", func(c *gin.Context) {
 		api.ICalHandler(c, db)
 	})
 
-	r.Run()
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	server := &http.Server{
+		Addr:              net.JoinHostPort("", port),
+		Handler:           r,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    16 << 10,
+	}
+	return server.ListenAndServe()
 }
