@@ -78,13 +78,6 @@ export default function App() {
     const appliedSemester = React.useRef<number | null>(null);
 
     React.useEffect(() => {
-        if (!scheduleOnly) return;
-        const previousTitle = document.title;
-        document.title = selectedSemester ? `${selectedSemester.name} schedule — Claret` : "Schedule — Claret";
-        return () => { document.title = previousTitle; };
-    }, [scheduleOnly, selectedSemester]);
-
-    React.useEffect(() => {
         if (selectedSemester || !semestersQuery.data?.length) return;
         const params = new URLSearchParams(window.location.search);
         const semester = semestersQuery.data.find(s => s.id.toString() === params.get("semester"))
