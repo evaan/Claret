@@ -23,12 +23,11 @@ export default function ICalModal(props: { isOpen: boolean; onHide: () => void }
     return (
         <Modal show={props.isOpen} onHide={() => props.onHide()} centered>
             <ModalHeader>
-                Add to External Calendar Application
+                Calendar subscription
                 <CloseButton onClick={() => props.onHide()}/>
             </ModalHeader>
             <ModalBody>
-                <p className="mb-3">You can add your schedule to an external calendar application (such as Google Calendar, Apple Calendar, Outlook, and Thunderbird)</p>
-                <p className="mb-3">Subscribe to the following iCalendar in your calendar application:</p>
+                <p className="mb-3">Subscribe using this URL in your calendar app.</p>
 
                 <InputGroup className="mb-3">
                     <Form.Control value={generateiCalURL()}/>

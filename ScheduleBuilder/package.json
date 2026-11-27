@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "bun@1.4.5",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -10,29 +11,31 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource/montserrat": "^5.0.18",
-    "@fullcalendar/core": "^6.1.11",
-    "@fullcalendar/react": "^6.1.11",
-    "@fullcalendar/timegrid": "^6.1.11",
-    "bootstrap": "^5.3.3",
-    "jotai": "^2.8.0",
-    "moment": "^2.30.1",
+    "@fontsource/montserrat": "^5.3.0",
+    "@fullcalendar/core": "^6.1.22",
+    "@fullcalendar/react": "^6.1.22",
+    "@fullcalendar/timegrid": "^6.1.22",
+    "@tanstack/react-query": "^5.108.4",
+    "bootstrap": "^5.3.9",
+    "jotai": "^2.20.3",
+    "jspdf": "^4.2.1",
+    "moment": "^2.31.0",
     "moment-range": "^4.0.2",
-    "react": "^18.2.0",
-    "react-bootstrap": "^2.10.2",
-    "react-dom": "^18.2.0"
+    "react": "^18.3.1",
+    "react-bootstrap": "^2.10.10",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@types/node": "^20.12.7",
-    "@types/react": "^18.2.66",
-    "@types/react-dom": "^18.2.22",
-    "@typescript-eslint/eslint-plugin": "^7.2.0",
-    "@typescript-eslint/parser": "^7.2.0",
-    "@vitejs/plugin-react": "^4.2.1",
-    "eslint": "^8.57.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.6",
-    "typescript": "^5.2.2",
-    "vite": "^5.4.8"
+    "@types/node": "^20.19.43",
+    "@types/react": "^18.3.32",
+    "@types/react-dom": "^18.3.7",
+    "@typescript-eslint/eslint-plugin": "^8.74.0",
+    "@typescript-eslint/parser": "^8.74.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.6"
   }
 }

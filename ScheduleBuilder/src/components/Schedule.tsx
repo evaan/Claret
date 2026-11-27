@@ -4,17 +4,25 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import { useAtom } from "jotai";
 import {
   selectedCoursesAtom,
+  selectedSemesterAtom,
   timesAtom,
 } from "../api/atoms";
-import { Course, Time } from "../api/types";
-import Moment from "moment";
-import { extendMoment } from "moment-range";
+import { Course } from "../api/types";
+import moment from "moment";
 import { Accordion, Button } from "react-bootstrap";
 import ClearModal from "./ClearModal";
 import SectionModal from "./SectionModal";
 import ICalModal from "./ICalModal";
 import ExamModal from "./ExamModal";
-const moment = extendMoment(Moment);
+import { buildSchedule } from "../api/schedule";
+import { totalCredits, uniqueCourseCount } from "../api/functions";
+import { LinkedSectionWarnings } from "./LinkedSections";
+
+function renderEventText(text: string) {
+  return text.split(/(\s[-–—]\s)/).map((part, index) => index % 2
+    ? <React.Fragment key={index}><span className="schedule-event-separator">{part}</span><br className="schedule-event-break" /></React.Fragment>
+    : part);
+}
 
 export function SectionButton1(props: { section: Course }) {
   const [modalOpen, setModalOpen] = React.useState<boolean>(false);
@@ -23,18 +31,64 @@ export function SectionButton1(props: { section: Course }) {
 
   return (
     <div>
-      <Button variant="link" style={{ width: "100%", paddingLeft: "8px" }} onClick={() => setModalOpen(true)}>
-        {props.section.id} - {props.section.name} - {props.section.crn} - {props.section.type}
-        {props.section.instructors.length > 0 && ` - ${[...new Set(props.section.instructors)].join(" - ")}`}
+      <Button variant="link" className="selected-course-link" onClick={() => setModalOpen(true)}>
+        <strong>{props.section.id} · {props.section.section}</strong>
+        <span>{props.section.name}</span>
+        <small>{props.section.type} · CRN {props.section.crn}</small>
       </Button>
       <SectionModal isOpen={modalOpen} onHide={closeModal} section={props.section} />
     </div>
   );
 }
 
-export default function Schedule() {
+export default function Schedule(props: { standalone?: boolean }) {
   const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
   const [times] = useAtom(timesAtom);
+  const [semester] = useAtom(selectedSemesterAtom);
+  const calendarRef = React.useRef<FullCalendar>(null);
+  const calendarContainerRef = React.useRef<HTMLDivElement>(null);
+  const [fitHeight, setFitHeight] = React.useState<number>();
+
+  React.useLayoutEffect(() => {
+    const container = calendarContainerRef.current;
+    if (!container) return;
+    let width = 0;
+    let frame = 0;
+    const resizeCalendar = () => {
+      if (container.getBoundingClientRect().width <= 0) return;
+      const mobile = window.matchMedia("(max-width: 767px)").matches;
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const top = container.getBoundingClientRect().top + window.scrollY;
+      const switcher = props.standalone ? null : document.querySelector(".mobile-view-switcher");
+      const page = container.closest(".schedule-page");
+      const bottom = props.standalone && page
+        ? parseFloat(window.getComputedStyle(page).paddingBottom)
+        : (switcher?.getBoundingClientRect().height ?? 0) + 12;
+      setFitHeight(mobile || props.standalone ? Math.max(120, Math.floor(viewportHeight - top - bottom)) : undefined);
+      calendarRef.current?.getApi().updateSize();
+    };
+    const scheduleResize = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(resizeCalendar);
+    };
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width === width) return;
+      width = entry.contentRect.width;
+      cancelAnimationFrame(frame);
+      if (width <= 0) return;
+      scheduleResize();
+    });
+    observer.observe(container);
+    window.addEventListener("resize", scheduleResize);
+    window.visualViewport?.addEventListener("resize", scheduleResize);
+    resizeCalendar();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", scheduleResize);
+      window.visualViewport?.removeEventListener("resize", scheduleResize);
+    };
+  }, [props.standalone]);
 
   const [calModalOpen, setCalModalOpen] = React.useState<boolean>(false);
   const closeCalModal = () => setCalModalOpen(false);
@@ -45,97 +99,53 @@ export default function Schedule() {
   const [clearModalOpen, setClearModalOpen] = React.useState<boolean>(false);
   const closeClearModal = () => setClearModalOpen(false);
 
-  let credits = 0;
-  let overlapping = false;
-  const courseTimes: { title: string; start: string; end?: string }[] = [];
-
-  const startTimes: number[] = [];
-  const endTimes: number[] = [];
-  let weekend = false;
-
-  function dayOfWeekName(day: string) {
-    if (day === "Sunday") {
-      return "Others";
-    }
-    if (day === "Saturday" && !weekend) return "Others";
-    return day;
-  }
-
-  selectedCourses.forEach((course: Course) => {
-    credits += course.credits;
-    times
-      .filter((time: Time) => time.crn === course.crn && time.days !== null)
-      .forEach((time: Time) => {
-        if (
-          (time.startTime === "00:00" && time.endTime === "00:01") ||
-          time.startTime === "TBA"
-        ) {
-          return;
-        }
-        startTimes.push(moment(time.startTime, "HH:mm").hour());
-        endTimes.push(moment(time.endTime, "HH:mm").hour() + 1);
-
-        const addEvent = (dayOffset: number) => {
-          courseTimes.push({
-            title: `${course.id}-${course.section} - ${time.location}`,
-            start: moment().startOf("week").add(dayOffset, "days").format("YYYY-MM-DD") + "T" + time.startTime,
-            end: moment().startOf("week").add(dayOffset, "days").format("YYYY-MM-DD") + "T" + time.endTime,
-          });
-        };
-
-        if (time.days.includes("M")) addEvent(1);
-        if (time.days.includes("T")) addEvent(2);
-        if (time.days.includes("W")) addEvent(3);
-        if (time.days.includes("R")) addEvent(4);
-        if (time.days.includes("F")) addEvent(5);
-        if (time.days.includes("S")) {
-          weekend = true;
-          addEvent(6);
-        }
-        if (time.days.includes("U")) {
-          weekend = true;
-          addEvent(7);
-        }
-      });
-  });
-
-  const min = startTimes.length > 0 ? Math.min(...startTimes) : 9;
-  const max = endTimes.length > 0 ? Math.max(...endTimes) : 17;
-
-  const othersStartingHour = startTimes.length > 0 ? Math.min(...startTimes) : 9;
-  let othersHourCursor = othersStartingHour;
-
-  selectedCourses.forEach((course: Course) => {
-    times
-      .filter((time: Time) =>
-        time.crn === course.crn &&
-        ((time.startTime === "00:00" && time.endTime === "00:01") || time.startTime === "TBA")
-      )
-      .forEach((time: Time) => {
-        courseTimes.push({
-          title: `${course.id}-${course.section} - ${time.location}`,
-          start: moment().startOf("week").add(weekend ? 7 : 6, "days").format("YYYY-MM-DD") + "T" + othersHourCursor.toString().padStart(2, "0") + ":00",
-          end: moment().startOf("week").add(weekend ? 7 : 6, "days").format("YYYY-MM-DD") + "T" + (othersHourCursor + 1).toString().padStart(2, "0") + ":00",
-        });
-        othersHourCursor++;
-      });
-  });
-
-  const finalHour = Math.max(max, othersHourCursor);
-
-  overlapCheck: for (const time of courseTimes) {
-    for (const time1 of courseTimes) {
-      if (
-        moment.range(moment(time.start), moment(time.end)).overlaps(moment.range(moment(time1.start), moment(time1.end))) &&
-        time !== time1
-      ) {
-        overlapping = true;
-        break overlapCheck;
-      } else overlapping = false;
-    }
-  }
+  const credits = totalCredits(selectedCourses);
+  const layout = React.useMemo(() => buildSchedule(selectedCourses, times), [selectedCourses, times]);
+  const { min, max, conflictingEvents, calendarMinWidth } = layout;
+  // Leave room for larger labels and headers that wrap on narrow screens.
+  const fitSlotMinutes = fitHeight == null ? undefined
+    : [30, 60, 120, 240].find(minutes => Math.ceil((max - min) * 60 / minutes) * (props.standalone ? 24 : 20) <= fitHeight - 60) ?? 240;
 
   const [isCopied, setIsCopied] = React.useState(false);
+  const [preparingPDF, setPreparingPDF] = React.useState(false);
+  const [pdfFailed, setPDFFailed] = React.useState(false);
+  const [pdfBlocked, setPDFBlocked] = React.useState(false);
+  const preparedPDF = React.useRef<{ courses: Course[]; times: typeof times; semester: string; url: string }>();
+  const pdfURLs = React.useRef<string[]>([]);
+  React.useEffect(() => () => {
+    pdfURLs.current.forEach(url => URL.revokeObjectURL(url));
+  }, []);
+  const scheduleURL = new URL(window.location.href);
+  scheduleURL.searchParams.set("view", "schedule");
+  scheduleURL.searchParams.set("crns", selectedCourses.map(course => course.crn).join(","));
+
+  async function openPDF() {
+    setPDFFailed(false);
+    setPDFBlocked(false);
+    const openTab = (url: string) => {
+      const tab = window.open(url, "_blank");
+      if (tab) tab.opener = null;
+      else setPDFBlocked(true);
+    };
+    const semesterName = semester?.name ?? "Schedule";
+    const cached = preparedPDF.current;
+    if (cached && cached.courses === selectedCourses && cached.times === times && cached.semester === semesterName) {
+      openTab(cached.url);
+      return;
+    }
+    setPreparingPDF(true);
+    try {
+      const { createSchedulePDF } = await import("../api/schedulePDF");
+      const url = URL.createObjectURL(createSchedulePDF(selectedCourses, times, semesterName).output("blob"));
+      pdfURLs.current.push(url);
+      preparedPDF.current = { courses: selectedCourses, times, semester: semesterName, url };
+      openTab(url);
+    } catch {
+      setPDFFailed(true);
+    } finally {
+      setPreparingPDF(false);
+    }
+  }
 
   const copySharingURL = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -146,40 +156,56 @@ export default function Schedule() {
   };
 
   function removeCourse(course: Course) {
-    setSelectedCourses(selectedCourses.filter((course1: Course) => course !== course1));
+    const remaining = selectedCourses.filter((course1: Course) => course.crn !== course1.crn);
+    setSelectedCourses(remaining);
     const params = new URLSearchParams(window.location.search);
-    let crns = "";
-    selectedCourses.forEach((course1: Course) => {
-      if (course.crn !== course1.crn) crns += course1.crn + ",";
-    });
-    params.set("crns", crns);
+    params.set("crns", remaining.map(course1 => course1.crn).join(","));
     window.history.replaceState(null, "", `?${params}`);
   }
 
+  const calendar = (
+      <div className="calendar-scroll" aria-label="Weekly schedule" tabIndex={0}>
+        <div ref={calendarContainerRef} style={{ "--calendar-min-width": `${calendarMinWidth}px` } as React.CSSProperties}>
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[timeGridPlugin]}
+            headerToolbar={false}
+            allDaySlot={false}
+            nowIndicator={false}
+            expandRows={fitHeight != null}
+            eventMinHeight={fitHeight != null ? 0 : 15}
+            slotEventOverlap={false}
+            events={layout.events}
+            eventContent={event => <div
+              className="schedule-event-content"
+              title={`${event.event.title}${event.event.extendedProps.unscheduled ? "" : `\n${event.timeText}`}${event.event.classNames.includes("has-conflict") ? "\nTime conflict" : ""}`}
+            >
+              {!event.event.extendedProps.unscheduled && <div className="fc-event-time">{renderEventText(event.timeText)}</div>}
+              <div className="fc-event-title-container"><div className="fc-event-title fc-sticky">{renderEventText(event.event.title)}</div></div>
+            </div>}
+            height={fitHeight ?? "auto"}
+            dayHeaderFormat={{ weekday: "short" }}
+            dayHeaderContent={arg => moment(arg.date).isSame(layout.unscheduledDate, "day")
+              ? <span title="Courses without a scheduled meeting time">N/A</span> : <span>{arg.text}</span>}
+            slotDuration={fitSlotMinutes == null ? (max - min > 12 ? "00:30:00" : "00:15:00") : { minutes: fitSlotMinutes }}
+            slotLabelInterval={fitSlotMinutes == null ? undefined : { minutes: Math.max(60, fitSlotMinutes) }}
+            slotMinTime={`${min}:00`}
+            slotMaxTime={`${max}:00`}
+            initialView="timeGrid"
+            visibleRange={layout.range}
+            eventColor="#A8415B"
+          />
+        </div>
+      </div>
+  );
+  if (props.standalone) return calendar;
+
   return (
     <div>
-      <FullCalendar
-        plugins={[timeGridPlugin]}
-        headerToolbar={{ left: "", center: "", right: "" }}
-        allDaySlot={false}
-        nowIndicator={false}
-        expandRows={true}
-        events={courseTimes}
-        height="auto"
-        dayHeaderFormat={{ weekday: "long" }}
-        dayHeaderContent={(arg) => dayOfWeekName(arg.text)}
-        slotDuration={finalHour - min > 12 ? "00:30:00" : "00:15:00"}
-        slotMinTime={`${min}:00`}
-        slotMaxTime={`${finalHour}:00`}
-        initialView="timeGrid"
-        visibleRange={{
-          start: moment().startOf("week").add(weekend ? 0 : 1, "days").format("YYYY-MM-DD"),
-          end: moment().endOf("week").add(weekend ? 2 : 1, "days").format("YYYY-MM-DD"),
-        }}
-        eventColor="#A8415B"
-      />
-      {overlapping && (
-        <div className="bg-warning text-dark my-2 rounded p-3">
+      {calendar}
+      <LinkedSectionWarnings courses={selectedCourses} />
+      {conflictingEvents.size > 0 && (
+        <div className="bg-warning text-dark my-2 rounded p-3" role="status">
           Warning: You have overlapping courses.
         </div>
       )}
@@ -190,39 +216,46 @@ export default function Schedule() {
       )}
       <Accordion className="mt-2" defaultActiveKey="overview">
         <Accordion.Item eventKey="overview">
-          <Accordion.Header>Overview</Accordion.Header>
+          <Accordion.Header>Selected courses</Accordion.Header>
           <Accordion.Body>
-            <p>
-              <strong>Total Credit Hours:</strong> {credits}
-            </p>
-            <p>
-              <strong>Selected Courses:</strong>
+            <p className="d-flex flex-wrap gap-2">
+              <span><strong>Courses:</strong> {uniqueCourseCount(selectedCourses)}</span>
+              <span><strong>Credits:</strong> {credits}</span>
             </p>
             {selectedCourses.map((course: Course) => (
-              <div key={course.crn} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }} className="border-secondary rounded border p-2">
+              <div key={course.crn} className="selected-course">
                 <SectionButton1 section={course} />
-                <Button variant="text" style={{ padding: "4px 8px" }} onClick={() => removeCourse(course)}>
+                <Button variant="link" aria-label={`Remove ${course.id} section ${course.section}`} onClick={() => removeCourse(course)}>
                   &#10006;
                 </Button>
               </div>
             ))}
-            <hr />
-            <Button variant="outline-danger" style={{ width: "100%" }} onClick={() => setClearModalOpen(true)}>
+            <Button variant="outline-danger" className="w-100 mt-3" disabled={selectedCourses.length === 0} onClick={() => setClearModalOpen(true)}>
               Clear Courses
             </Button>
             <ClearModal isOpen={clearModalOpen} onHide={closeClearModal} />
           </Accordion.Body>
         </Accordion.Item>
         <Accordion.Item eventKey="sharing">
-          <Accordion.Header>Sharing/Exporting</Accordion.Header>
+          <Accordion.Header>Share schedule</Accordion.Header>
           <Accordion.Body>
             <Button className="w-100" onClick={() => setCalModalOpen(true)} disabled={selectedCourses.length === 0}>
-              {selectedCourses.length === 0 ? "Subscribe to Calendar (No courses selected)" : "Subscribe to Calendar"}
+              Subscribe to calendar
             </Button>
             <ICalModal isOpen={calModalOpen} onHide={closeCalModal} />
             <Button className="w-100 mt-2" onClick={copySharingURL} disabled={selectedCourses.length === 0}>
-              {selectedCourses.length === 0 ? "Copy Claret link to clipboard (No courses selected)" : isCopied ? "Copied!" : "Copy Claret link to clipboard"}
+              {isCopied ? "Copied!" : "Copy schedule link"}
             </Button>
+            <Button as="a" className="w-100 mt-2" href={scheduleURL.href} target="_blank" rel="noopener noreferrer"
+              disabled={selectedCourses.length === 0}>
+              Open schedule only
+            </Button>
+            <Button className="w-100 mt-2" onClick={openPDF}
+              disabled={selectedCourses.length === 0 || preparingPDF} aria-busy={preparingPDF}>
+              {preparingPDF ? "Preparing PDF..." : "Open schedule PDF"}
+            </Button>
+            {pdfFailed && <p className="detail-muted mt-2" role="alert">The PDF could not be created. Please try again.</p>}
+            {pdfBlocked && <p className="detail-muted mt-2" role="alert">Your browser blocked the new tab. Click again to open the PDF.</p>}
             <ExamModal isOpen={examModalOpen} onHide={closeExamModal} />
             {/* <Button className="w-100 mt-2" onClick={() => setExamModalOpen(true)} disabled={selectedCourses.length === 0}>
               {selectedCourses.length === 0 ? "View final exam schedule (no courses selected)" : "View final exam schedule"}

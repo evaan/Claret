@@ -1,104 +1,178 @@
-import { Accordion, Col, Form, Row } from "react-bootstrap";
+import { Accordion, Alert, Button, Form } from "react-bootstrap";
 import React from "react";
 import SubjectAccordion from "./components/SubjectAccordion";
-import { coursesAtom, examsAtom, filterAtom, profsAtom, searchQueryAtom, seatingAtom, selectedCoursesAtom, selectedSemesterAtom, selectedTabAtom, subjectsAtom, timesAtom } from "./api/atoms";
+import { coursesAtom, examsAtom, filteredCoursesAtom, profsAtom, seatingAtom, selectedCoursesAtom, selectedSemesterAtom, selectedTabAtom, subjectsAtom, timesAtom } from "./api/atoms";
 import { useAtom } from "jotai";
 import { Course, ExamTime, Professor, Seating, Semester, Subject, Time } from "./api/types";
 import Schedule from "./components/Schedule";
-import { shouldShow } from "./api/functions";
 import SearchBar from "./components/SearchBar";
+import { useQuery } from "@tanstack/react-query";
+import MobileViews from "./components/MobileViews";
+
+const apiURL = process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080";
+const seatRefreshInterval = 10 * 60 * 1000;
+
+async function fetchJSON<T>(path: string, signal: AbortSignal): Promise<T> {
+    const response = await fetch(apiURL + path, { signal });
+    if (!response.ok) throw new Error("Course data could not be loaded. Please try again.");
+    return response.json();
+}
 
 export default function App() {
     const [subjects, setSubjects] = useAtom(subjectsAtom);
-    const [courses, setCourses] = useAtom(coursesAtom);
+    const [, setCourses] = useAtom(coursesAtom);
     const [, setTimes] = useAtom(timesAtom);
     const [, setSeating] = useAtom(seatingAtom);
     const [, setProfs] = useAtom(profsAtom);
     const [, setExams] = useAtom(examsAtom);
-    const [filters, setFilters] = useAtom(filterAtom);
+    const [filteredCourses] = useAtom(filteredCoursesAtom);
     const [selectedTab, setSelectedTab] = useAtom(selectedTabAtom);
-    const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
-    const [searchQuery] = useAtom(searchQueryAtom);
-
+    const [, setSelectedCourses] = useAtom(selectedCoursesAtom);
     const [selectedSemester, setSelectedSemester] = useAtom(selectedSemesterAtom);
-    const [semesters, setSemesters] = React.useState<Semester[]>([]);
+    const semesterID = selectedSemester?.id;
+    const params = new URLSearchParams(window.location.search);
+    const scheduleOnly = params.get("view") === "schedule";
+    const scheduleCRNs = [...new Set((params.get("crns") ?? "").split(",").map(crn => crn.trim()).filter(Boolean))].sort().join(",");
+    const semestersQuery = useQuery({
+        queryKey: ["semesters"],
+        queryFn: ({ signal }) => fetchJSON<Semester[]>("/semesters", signal),
+        staleTime: seatRefreshInterval,
+    });
+    const frontendQuery = useQuery({
+        queryKey: ["frontend", semesterID],
+        queryFn: ({ signal }) => fetchJSON<{subjects: Subject[]; courses: Course[]; times: Time[]; seatings: Seating[]; profs: Professor[]; exams?: ExamTime[]}>(
+            "/frontend?semester=" + semesterID, signal,
+        ),
+        enabled: semesterID != null && !scheduleOnly,
+        staleTime: seatRefreshInterval,
+        gcTime: 30 * 60 * 1000,
+        refetchInterval: seatRefreshInterval,
+    });
+    const scheduleQuery = useQuery({
+        queryKey: ["schedule", semesterID, scheduleCRNs],
+        queryFn: async ({ signal }) => {
+            const data = await fetchJSON<{courses: Omit<Course, "instructors">[]; times: Time[]}>(
+                `/schedule?semester=${semesterID}&crns=${encodeURIComponent(scheduleCRNs)}`, signal,
+            );
+            return {
+                courses: data.courses.map(course => ({ ...course, instructors: [] })),
+                times: data.times,
+                subjects: [], seatings: [], profs: [], exams: [],
+            };
+        },
+        enabled: semesterID != null && scheduleOnly,
+        staleTime: seatRefreshInterval,
+        gcTime: 30 * 60 * 1000,
+        refetchInterval: seatRefreshInterval,
+    });
+    const dataQuery = scheduleOnly ? scheduleQuery : frontendQuery;
+    const semesters = React.useMemo(
+        () => [...(semestersQuery.data ?? [])].sort((a, b) => b.id - a.id),
+        [semestersQuery.data],
+    );
+    const error = (!semestersQuery.data && semestersQuery.error?.message)
+        || (semestersQuery.data?.length === 0 && "No semesters are currently available.")
+        || (!dataQuery.data && dataQuery.error?.message)
+        || "";
+    const loading = !error && (semesterID == null || dataQuery.isPending);
+    const appliedSemester = React.useRef<number | null>(null);
 
     React.useEffect(() => {
-        fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/semesters").then(response => response.json()).then((data: Semester[]) => {
-            setSemesters(data);
-            const params = new URLSearchParams(window.location.search);
-            const semester: Semester = data.find((s: Semester) => s.id.toString() === params.get("semester")) ?? data.find((s: Semester) => s.latest)!;
-            setSelectedSemester(semester);
-            params.set("semester", semester.id.toString());
-            window.history.replaceState(null, "", `?${params}`);
-            setSelectedSemester(data.filter((semester1: Semester) => semester.id.toString() == semester1.id.toString())[0]);
-        });
-    }, []);
+        if (!scheduleOnly) return;
+        const previousTitle = document.title;
+        document.title = selectedSemester ? `${selectedSemester.name} schedule — Claret` : "Schedule — Claret";
+        return () => { document.title = previousTitle; };
+    }, [scheduleOnly, selectedSemester]);
 
     React.useEffect(() => {
-        if (selectedSemester == null) return;
-        fetch((process.env.NODE_ENV === "production" ? "https://api.claretformun.com" : "http://127.0.0.1:8080")+"/frontend?semester=" + selectedSemester.id).then(response => response.json()).then((data: {subjects: Subject[], courses: Course[], times: Time[], seatings: Seating[], profs: Professor[], exams: ExamTime[]}) => {
-            setSubjects(data.subjects);
-            setCourses(data.courses);
-            setTimes(data.times);
-            setSeating(data.seatings);
-            setProfs(data.profs);
-            setExams(data.exams || []);
-            const crnsParam = new URLSearchParams(window.location.search).get("crns")?.split(",");
-            const newCourses: Course[] = [];
-            if (crnsParam !== undefined) {
-                data.courses.forEach((course: Course) => {
-                    if (crnsParam.includes(course.crn) && !selectedCourses.includes(course)) newCourses.push(course);
-                });
-            }
-            setSelectedCourses(newCourses);
-        });
-    }, [selectedSemester]);
+        if (selectedSemester || !semestersQuery.data?.length) return;
+        const params = new URLSearchParams(window.location.search);
+        const semester = semestersQuery.data.find(s => s.id.toString() === params.get("semester"))
+            ?? semestersQuery.data.find(s => s.latest) ?? semestersQuery.data[0];
+        setSelectedSemester(semester);
+        params.set("semester", semester.id.toString());
+        window.history.replaceState(null, "", `?${params}`);
+    }, [semestersQuery.data, selectedSemester, setSelectedSemester]);
+
+    React.useLayoutEffect(() => {
+        if (semesterID == null) return;
+        const data = dataQuery.data;
+        setSubjects(data?.subjects ?? []);
+        setCourses(data?.courses ?? []);
+        setTimes(data?.times ?? []);
+        setSeating(data?.seatings ?? []);
+        setProfs(data?.profs ?? []);
+        setExams(data?.exams ?? []);
+        if (!data) {
+            setSelectedCourses([]);
+            appliedSemester.current = null;
+        } else if (appliedSemester.current !== semesterID) {
+            const crns = new URLSearchParams(window.location.search).get("crns")?.split(",") ?? [];
+            setSelectedCourses(data.courses.filter(course => crns.includes(course.crn)));
+            appliedSemester.current = semesterID;
+        } else {
+            const coursesByCRN = new Map(data.courses.map(course => [course.crn, course]));
+            setSelectedCourses(current => {
+                const updated = current.map(course => coursesByCRN.get(course.crn) ?? course);
+                return updated.some((course, index) => course !== current[index]) ? updated : current;
+            });
+        }
+    }, [semesterID, dataQuery.data, setSubjects, setCourses, setTimes, setSeating, setProfs, setExams, setSelectedCourses]);
+
+    const visibleSubjects = new Set(filteredCourses.map(course => course.subject));
+    const errorAlert = error && <Alert variant="danger">{error} <Button variant="link" onClick={() => {
+        void (semesterID == null ? semestersQuery.refetch() : dataQuery.refetch());
+    }}>Retry</Button></Alert>;
+
+    if (scheduleOnly) {
+        return <main className="app-shell schedule-page">
+            {errorAlert}
+            {loading && <p className="empty-state" role="status">Loading schedule…</p>}
+            {!loading && !error && <Schedule standalone />}
+        </main>;
+    }
 
     return (
-        <div className="mb-4">
-            <Row style={{marginLeft: "2.5%", marginRight: "2.5%"}}>
-                <Col xs={12} md={8} className="order-md-2">
-                    <h1 className="text-center">Schedule</h1>
-                    <Schedule />
-                </Col>
-                <Col xs={12} md={4} className="order-md-1">
-                    <h1 className="text-center">Courses</h1>
-                    <div className="d-flex flex-wrap justify-content-center">
-                        <Form.Check inline type="switch" label="St. John's" defaultChecked={true} onChange={(event) => setFilters([event.target.checked, filters[1], filters[2], filters[3], filters[4]])} />
-                        <Form.Check inline type="switch" label="Grenfell" defaultChecked={false} onChange={(event) => setFilters([filters[0], event.target.checked, filters[2], filters[3], filters[4]])} />
-                        <Form.Check inline type="switch" label="Marine Institute" defaultChecked={false} onChange={(event) => setFilters([filters[0], filters[1], event.target.checked, filters[3], filters[4]])} />
-                        <div style={{flexBasis: "100%", height: "0"}} />
-                        <Form.Check inline type="switch" label="Online" defaultChecked={true} onChange={(event) => setFilters([filters[0], filters[1], filters[2], event.target.checked, filters[4]])} />
-                        <Form.Check inline type="switch" label="Others" defaultChecked={false} onChange={(event) => setFilters([filters[0], filters[1], filters[2], filters[3], event.target.checked])} />
-                    </div>
-                    <Form.Select aria-label="Selected Semester" value={selectedSemester?.id} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                            const newSemester: Semester = semesters.filter((semester: Semester) => semester.id.toString() == e.target.value)[0];
-                            setSelectedSemester(newSemester);
+        <main className="app-shell has-mobile-switcher">
+            {errorAlert}
+            <MobileViews
+                schedule={
+                    <section aria-label="Schedule">
+                        <Schedule />
+                    </section>
+                }
+                courses={
+                    <section className="course-browser" aria-busy={loading} aria-label="Courses">
+                        <Form.Label htmlFor="semester" className="visually-hidden">Semester</Form.Label>
+                        <Form.Select id="semester" value={semesterID ?? ""} disabled={semesters.length === 0} onChange={event => {
+                            const semester = semesters.find(semester => semester.id.toString() === event.target.value);
+                            if (!semester) return;
                             const params = new URLSearchParams(window.location.search);
-                            params.set("semester", newSemester?.id.toString() || params.get("semester") || "");
+                            params.set("semester", semester.id.toString());
+                            params.delete("crns");
                             window.history.replaceState(null, "", `?${params}`);
+                            setSelectedSemester(semester);
                         }}>
-                        {semesters.sort((function(a: Semester, b: Semester) {return b.id - a.id;})).map((semester: Semester) => (
-                            <option value={semester.id} key={semester.id}>{semester.name}</option>
-                        ))}
-                    </Form.Select>
-                    <SearchBar />
-                    <Accordion style={{overflowY: "auto"}} onSelect={(event) => {
-                        //jank solution but it reduces the amount of lag the site has SIGNIFICANTLY
-                        setSelectedTab([event, selectedTab[0]]);
-                        setTimeout(() => {
-                            if (event !== null) setSelectedTab([event, "-1"]);
-                        }, 500);
-                    }}>
-                        {subjects.sort(function(a, b) {if (a.description < b.description) return -1; else return 1;}).map((subject, index) => {
-                            if (courses.filter((course: Course) => course.subject == subject.code && shouldShow(course, filters) && (searchQuery == "" || course.id.toLowerCase().includes(searchQuery.toLowerCase()) || course.name.toLowerCase().includes(searchQuery.toLowerCase()))).length > 0) {
-                                return (<SubjectAccordion subject={subject} index={subject.description} key={index} />);
-                            }
-                        })}
-                    </Accordion>
-                </Col>
-            </Row>
-        </div>
+                            {semesters.length === 0 && <option value="">Loading semesters…</option>}
+                            {semesters.map(semester => <option value={semester.id} key={semester.id}>{semester.name}</option>)}
+                        </Form.Select>
+                        {selectedSemester?.viewOnly && <p className="detail-muted mt-2">Archived semester. Availability may be out of date.</p>}
+                        <SearchBar />
+                        {loading && <div className="course-list-placeholder placeholder-glow" role="status">
+                            <span className="visually-hidden">Loading courses…</span>
+                            {Array.from({ length: 8 }, (_, index) => <div className="course-placeholder-row" key={index} aria-hidden="true">
+                                <span className="placeholder" style={{ width: `${50 + index % 3 * 10}%` }} />
+                            </div>)}
+                        </div>}
+                        {!loading && !error && visibleSubjects.size === 0 && <p className="empty-state">No matching courses.</p>}
+                        {!loading && <Accordion onSelect={event => setSelectedTab([event, selectedTab[0]])}>
+                            {[...subjects].sort((a, b) => a.description.localeCompare(b.description)).filter(subject => visibleSubjects.has(subject.code)).map(subject => (
+                                <SubjectAccordion subject={subject} index={subject.description} key={subject.code} />
+                            ))}
+                        </Accordion>}
+                    </section>
+                }
+            />
+        </main>
     );
 }

@@ -9,11 +9,11 @@ export default function ICalModal(props: { isOpen: boolean; onHide: () => void }
     return (
         <Modal show={props.isOpen} onHide={() => props.onHide()} centered>
             <ModalHeader>
-                Are you sure you want to clear courses?
+                Clear courses?
             </ModalHeader>
             <ModalFooter>
-                <Button variant="secondary" onClick={() => props.onHide()}>No</Button>
-                <Button variant="danger" onClick={() => {setSelectedCourses([]); window.history.replaceState(null, "", `?semester=${selectedSemester?.id}`); props.onHide();}}>Yes</Button>
+                <Button variant="secondary" onClick={() => props.onHide()}>Cancel</Button>
+                <Button variant="danger" onClick={() => {setSelectedCourses([]); window.history.replaceState(null, "", `?semester=${selectedSemester?.id}`); props.onHide();}}>Clear</Button>
             </ModalFooter>
         </Modal>
     );
