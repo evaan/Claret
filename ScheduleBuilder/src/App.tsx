@@ -153,7 +153,7 @@ export default function App() {
                             window.history.replaceState(null, "", `?${params}`);
                             setSelectedSemester(semester);
                         }}>
-                            {semesters.length === 0 && <option value="">Loading semesters…</option>}
+                            {semesters.length === 0 && <option value="" />}
                             {semesters.map(semester => <option value={semester.id} key={semester.id}>{semester.name}</option>)}
                         </Form.Select>
                         {selectedSemester?.viewOnly && <p className="detail-muted mt-2">Archived semester. Availability may be out of date.</p>}
