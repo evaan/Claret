@@ -23,6 +23,7 @@ h1, h2, h3, p { margin: 0; }
 .course-placeholder-row:last-child { border-bottom: 0; }
 .course-placeholder-row .placeholder { min-height: 0.75rem; color: var(--muted); cursor: default; }
 .form-control, .form-select { background-color: var(--surface); border-color: var(--line); font-size: 0.85rem; }
+.form-select:disabled { background-color: var(--surface); }
 .form-select option { background: var(--surface); }
 .course-search { display: flex; gap: 0.5rem; }
 .course-search .form-control { min-width: 0; }

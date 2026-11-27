@@ -45,15 +45,19 @@ export default function Schedule(props: { standalone?: boolean }) {
   const [selectedCourses, setSelectedCourses] = useAtom(selectedCoursesAtom);
   const [times] = useAtom(timesAtom);
   const [semester] = useAtom(selectedSemesterAtom);
+  const layout = React.useMemo(() => buildSchedule(selectedCourses, times), [selectedCourses, times]);
   const calendarRef = React.useRef<FullCalendar>(null);
   const calendarContainerRef = React.useRef<HTMLDivElement>(null);
   const [fitHeight, setFitHeight] = React.useState<number>();
+  const [fullWeekdays, setFullWeekdays] = React.useState(false);
 
   React.useLayoutEffect(() => {
     const container = calendarContainerRef.current;
     if (!container) return;
     let width = 0;
     let frame = 0;
+    let disposed = false;
+    const textContext = document.createElement("canvas").getContext("2d");
     const resizeCalendar = () => {
       if (container.getBoundingClientRect().width <= 0) return;
       const mobile = window.matchMedia("(max-width: 767px)").matches;
@@ -66,6 +70,15 @@ export default function Schedule(props: { standalone?: boolean }) {
         : (switcher?.getBoundingClientRect().height ?? 0) + 12;
       setFitHeight(mobile || props.standalone ? Math.max(120, Math.floor(viewportHeight - top - bottom)) : undefined);
       calendarRef.current?.getApi().updateSize();
+      const headings = container.querySelectorAll<HTMLElement>(".fc-col-header-cell");
+      const label = headings[0]?.querySelector<HTMLElement>(".fc-col-header-cell-cushion");
+      if (label && textContext) {
+        const style = window.getComputedStyle(label);
+        textContext.font = style.font;
+        const requiredWidth = Math.max(...moment.weekdays().map(day => textContext.measureText(day).width))
+          + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + 2;
+        setFullWeekdays(!mobile && [...headings].every(heading => heading.getBoundingClientRect().width >= requiredWidth));
+      }
     };
     const scheduleResize = () => {
       cancelAnimationFrame(frame);
@@ -81,14 +94,16 @@ export default function Schedule(props: { standalone?: boolean }) {
     observer.observe(container);
     window.addEventListener("resize", scheduleResize);
     window.visualViewport?.addEventListener("resize", scheduleResize);
+    void document.fonts.ready.then(() => { if (!disposed) scheduleResize(); });
     resizeCalendar();
     return () => {
+      disposed = true;
       observer.disconnect();
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", scheduleResize);
       window.visualViewport?.removeEventListener("resize", scheduleResize);
     };
-  }, [props.standalone]);
+  }, [props.standalone, layout.days.length]);
 
   const [calModalOpen, setCalModalOpen] = React.useState<boolean>(false);
   const closeCalModal = () => setCalModalOpen(false);
@@ -100,7 +115,6 @@ export default function Schedule(props: { standalone?: boolean }) {
   const closeClearModal = () => setClearModalOpen(false);
 
   const credits = totalCredits(selectedCourses);
-  const layout = React.useMemo(() => buildSchedule(selectedCourses, times), [selectedCourses, times]);
   const { min, max, conflictingEvents, calendarMinWidth } = layout;
   // Leave room for larger labels and headers that wrap on narrow screens.
   const fitSlotMinutes = fitHeight == null ? undefined
@@ -184,7 +198,7 @@ export default function Schedule(props: { standalone?: boolean }) {
               <div className="fc-event-title-container"><div className="fc-event-title fc-sticky">{renderEventText(event.event.title)}</div></div>
             </div>}
             height={fitHeight ?? "auto"}
-            dayHeaderFormat={{ weekday: "short" }}
+            dayHeaderFormat={{ weekday: fullWeekdays ? "long" : "short" }}
             dayHeaderContent={arg => moment(arg.date).isSame(layout.unscheduledDate, "day")
               ? <span title="Courses without a scheduled meeting time">N/A</span> : <span>{arg.text}</span>}
             slotDuration={fitSlotMinutes == null ? (max - min > 12 ? "00:30:00" : "00:15:00") : { minutes: fitSlotMinutes }}
